@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import MonacoEditor from '@monaco-editor/react';
+import MonacoEditor, { loader } from '@monaco-editor/react';
 import { FileType } from '../types';
-import { loader } from '@monaco-editor/react';
 import { getFileLanguage } from '../utils/fileUtils';
 
 // Configure Monaco Editor loader
@@ -9,11 +8,11 @@ loader.config({ monaco: undefined });
 
 interface EditorProps {
   file: FileType | null;
-  theme: string;
+  theme?: string; // Made optional with a default
   onContentChange: (fileId: string, content: string) => void;
 }
 
-export default function Editor({ file, theme, onContentChange }: EditorProps) {
+export default function Editor({ file, theme = 'vs-dark', onContentChange }: EditorProps) {
   const monacoRef = useRef(null);
   const [editorKey, setEditorKey] = useState(0);
   const resizeTimeoutRef = useRef<number | null>(null);
@@ -39,6 +38,17 @@ export default function Editor({ file, theme, onContentChange }: EditorProps) {
 
   const handleEditorDidMount = (editor: any, monaco: any) => {
     monacoRef.current = monaco;
+
+    // Optional: Define a custom dark theme
+    // monaco.editor.defineTheme('my-dark-theme', {
+    //   base: 'vs-dark',
+    //   inherit: true,
+    //   rules: [],
+    //   colors: {
+    //     'editor.background': '#1E1E1E',
+    //   },
+    // });
+    // monaco.editor.setTheme('my-dark-theme');
 
     // Configure Python specific settings
     monaco.languages.registerCompletionItemProvider('python', {
@@ -82,7 +92,7 @@ export default function Editor({ file, theme, onContentChange }: EditorProps) {
         height="100%"
         language={getFileLanguage(file.name)}
         value={file.content}
-        theme={theme}
+        theme={theme} // Ensure this is set to 'vs-dark' or your chosen dark theme
         onChange={(value) => onContentChange(file.id, value || '')}
         onMount={handleEditorDidMount}
         options={{
