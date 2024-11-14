@@ -1,34 +1,35 @@
-import { FileType, FolderType } from '../types';
+// File: src/utils/codeContextUtils.ts
 
-export interface TreeNode {
-  name: string;
-  type: 'file' | 'folder';
-  children?: TreeNode[];
-  path?: string;
-}
+import { FileType, FolderType, TreeNode } from '../types';
 
+/**
+ * Generates a hierarchical file tree excluding specified patterns.
+ */
 export async function generateFileTree(
   files: (FileType | FolderType)[],
   excludePatterns: string[]
 ): Promise<TreeNode[]> {
-  function buildTree(items: (FileType | FolderType)[], currentPath: string = ''): TreeNode[] {
+  function buildTree(
+    items: (FileType | FolderType)[],
+    currentPath: string = ''
+  ): TreeNode[] {
     return items
-      .filter(item => !shouldExclude(item.name, excludePatterns))
-      .map(item => {
+      .filter((item) => !shouldExclude(item.name, excludePatterns))
+      .map((item) => {
         const itemPath = currentPath ? `${currentPath}/${item.name}` : item.name;
-        
+
         if ('items' in item) {
           return {
             name: item.name,
             type: 'folder',
             path: itemPath,
-            children: buildTree(item.items, itemPath)
+            children: buildTree(item.items, itemPath),
           };
         }
         return {
           name: item.name,
           type: 'file',
-          path: itemPath
+          path: itemPath,
         };
       });
   }
@@ -36,7 +37,13 @@ export async function generateFileTree(
   return buildTree(files);
 }
 
-export function exportTreeToFormat(tree: TreeNode[], format: 'json' | 'markdown' | 'text'): string {
+/**
+ * Exports the tree to the specified format.
+ */
+export function exportTreeToFormat(
+  tree: TreeNode[],
+  format: 'json' | 'markdown' | 'text'
+): string {
   switch (format) {
     case 'json':
       return JSON.stringify(tree, null, 2);
@@ -50,32 +57,39 @@ export function exportTreeToFormat(tree: TreeNode[], format: 'json' | 'markdown'
 }
 
 function generateMarkdownTree(tree: TreeNode[], level: number = 0): string {
-  return tree.map(node => {
-    const indent = '  '.repeat(level);
-    const prefix = level === 0 ? '# ' : '- ';
-    const line = `${indent}${prefix}${node.name}`;
-    
-    if (node.children) {
-      return `${line}\n${generateMarkdownTree(node.children, level + 1)}`;
-    }
-    return line;
-  }).join('\n');
+  return tree
+    .map((node) => {
+      const indent = '  '.repeat(level);
+      const prefix = node.type === 'folder' ? '- ' : '- ';
+      const line = `${indent}${prefix}${node.name}`;
+
+      if (node.children) {
+        return `${line}\n${generateMarkdownTree(node.children, level + 1)}`;
+      }
+      return line;
+    })
+    .join('\n');
 }
 
 function generateTextTree(tree: TreeNode[], prefix: string = ''): string {
-  return tree.map((node, index, array) => {
-    const isLast = index === array.length - 1;
-    const marker = isLast ? '└── ' : '├── ';
-    const childPrefix = isLast ? '    ' : '│   ';
-    const line = `${prefix}${marker}${node.name}`;
-    
-    if (node.children) {
-      return `${line}\n${generateTextTree(node.children, prefix + childPrefix)}`;
-    }
-    return line;
-  }).join('\n');
+  return tree
+    .map((node, index, array) => {
+      const isLast = index === array.length - 1;
+      const marker = isLast ? '└── ' : '├── ';
+      const childPrefix = prefix + (isLast ? '    ' : '│   ');
+      const line = `${prefix}${marker}${node.name}`;
+
+      if (node.children) {
+        return `${line}\n${generateTextTree(node.children, childPrefix)}`;
+      }
+      return line;
+    })
+    .join('\n');
 }
 
+/**
+ * Downloads the tree content as a file.
+ */
 export function downloadTree(content: string, format: string) {
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -88,6 +102,9 @@ export function downloadTree(content: string, format: string) {
   URL.revokeObjectURL(url);
 }
 
+/**
+ * Aggregates code from files excluding specified patterns and extensions.
+ */
 export async function aggregateCode(
   files: (FileType | FolderType)[],
   excludePatterns: string[],
@@ -96,7 +113,7 @@ export async function aggregateCode(
   let aggregatedCode = '';
 
   function processItems(items: (FileType | FolderType)[], path: string = '') {
-    items.forEach(item => {
+    items.forEach((item) => {
       if (shouldExclude(item.name, excludePatterns)) return;
 
       const itemPath = path ? `${path}/${item.name}` : item.name;
@@ -115,6 +132,51 @@ export async function aggregateCode(
   return aggregatedCode;
 }
 
+/**
+ * Analyzes dependencies of a specific file.
+ */
+export async function analyzeFileDependencies(
+  file: FileType,
+  files: (FileType | FolderType)[]
+): Promise<{ dependencies: string[]; dependents: string[] }> {
+  const dependencies: string[] = [];
+  const dependents: string[] = [];
+
+  // Extract imports from the file content
+  const importRegex = /import\s+(?:(?:[\w*\s{},]*)\s+from\s+)?['"](\.\/[^'"]+)['"]/g;
+  let match;
+  while ((match = importRegex.exec(file.content)) !== null) {
+    dependencies.push(match[1]);
+  }
+
+  // Find files that import the current file
+  function findDependents(
+    items: (FileType | FolderType)[],
+    currentPath: string = ''
+  ) {
+    items.forEach((item) => {
+      if ('items' in item) {
+        findDependents(item.items, `${currentPath}/${item.name}`);
+      } else {
+        const importRegex = new RegExp(
+          `import\\s+(?:.*?from\\s+)?['"]${file.name}['"]`,
+          'g'
+        );
+        if (importRegex.test(item.content)) {
+          dependents.push(`${currentPath}/${item.name}`);
+        }
+      }
+    });
+  }
+
+  findDependents(files);
+
+  return { dependencies, dependents };
+}
+
+/**
+ * Aggregates code with dependencies for a specific file.
+ */
 export async function aggregateFileWithDependencies(
   file: FileType,
   files: (FileType | FolderType)[],
@@ -123,12 +185,15 @@ export async function aggregateFileWithDependencies(
   let aggregatedCode = '';
   const processedFiles = new Set<string>();
 
-  function findFileByPath(items: (FileType | FolderType)[], targetPath: string): FileType | null {
+  function findFileByPath(
+    items: (FileType | FolderType)[],
+    targetPath: string
+  ): FileType | null {
     for (const item of items) {
       if ('items' in item) {
         const found = findFileByPath(item.items, targetPath);
         if (found) return found;
-      } else if (targetPath.endsWith(item.name)) {
+      } else if (item.id === targetPath || item.name === targetPath) {
         return item;
       }
     }
@@ -141,7 +206,9 @@ export async function aggregateFileWithDependencies(
 
     const indentation = ' '.repeat(indent);
     aggregatedCode += `\n${indentation}// File: ${currentFile.name}\n`;
-    aggregatedCode += `${indentation}${currentFile.content.split('\n').join(`\n${indentation}`)}\n`;
+    aggregatedCode += `${indentation}${currentFile.content
+      .split('\n')
+      .join(`\n${indentation}`)}\n`;
     aggregatedCode += `${indentation}// End of file\n`;
   }
 
@@ -170,39 +237,9 @@ export async function aggregateFileWithDependencies(
   return aggregatedCode;
 }
 
-export async function analyzeFileDependencies(
-  file: FileType,
-  files: (FileType | FolderType)[]
-): Promise<{ dependencies: string[]; dependents: string[] }> {
-  const dependencies: string[] = [];
-  const dependents: string[] = [];
-
-  // Extract imports from the file content
-  const importRegex = /import\s+(?:(?:[\w*\s{},]*)\s+from\s+)?['"](\.\/[^'"]+)['"]/g;
-  let match;
-  while ((match = importRegex.exec(file.content)) !== null) {
-    dependencies.push(match[1]);
-  }
-
-  // Find files that import the current file
-  function findDependents(items: (FileType | FolderType)[], currentPath: string = '') {
-    items.forEach(item => {
-      if ('items' in item) {
-        findDependents(item.items, `${currentPath}/${item.name}`);
-      } else {
-        const importRegex = new RegExp(`import\\s+(?:(?:[\\w*\\s{},]*)\\s+from\\s+)?['"]${file.name}['"]`, 'g');
-        if (importRegex.test(item.content)) {
-          dependents.push(`${currentPath}/${item.name}`);
-        }
-      }
-    });
-  }
-
-  findDependents(files);
-
-  return { dependencies, dependents };
-}
-
+/**
+ * Extracts files from pasted text.
+ */
 export async function extractFilesFromText(
   text: string,
   files: (FileType | FolderType)[],
@@ -214,15 +251,15 @@ export async function extractFilesFromText(
 
   // Common file path patterns
   const patterns = [
-    /(?:^|\s)(?:\.\/|\/)?([a-zA-Z0-9_\-/.]+\.[a-zA-Z0-9]+)(?:\s|$|:|\(|,)/gm,  // Basic file paths
-    /(?:from\s+['"])([^'"]+)(['"])/g,  // Import statements
-    /(?:require\(['"])([^'"]+)(['"])/g,  // Require statements
-    /(?:at\s+)(?:\w+\s+)?\(?([^:)]+?):?\d*\)?/gm,  // Stack trace paths
-    /(?:Error:|Warning:)\s+([^:]+):/gm  // Error messages
+    /(?:^|\s)(?:\.\/|\/)?([a-zA-Z0-9_\-/.]+\.[a-zA-Z0-9]+)(?:\s|$|:|\(|,)/gm, // Basic file paths
+    /(?:from\s+['"])([^'"]+)(['"])/g, // Import statements
+    /(?:require\(['"])([^'"]+)(['"])/g, // Require statements
+    /(?:at\s+)(?:\w+\s+)?\(?([^:)]+?):?\d*\)?/gm, // Stack trace paths
+    /(?:Error:|Warning:)\s+([^:]+):/gm, // Error messages
   ];
 
   // Extract file paths from text
-  patterns.forEach(pattern => {
+  patterns.forEach((pattern) => {
     let match;
     while ((match = pattern.exec(text)) !== null) {
       const path = match[1].trim();
@@ -231,8 +268,11 @@ export async function extractFilesFromText(
   });
 
   // Find matching files in the project
-  function findMatchingFiles(items: (FileType | FolderType)[], currentPath: string = '') {
-    items.forEach(item => {
+  function findMatchingFiles(
+    items: (FileType | FolderType)[],
+    currentPath: string = ''
+  ) {
+    items.forEach((item) => {
       if (shouldExclude(item.name, excludePatterns)) return;
 
       const itemPath = currentPath ? `${currentPath}/${item.name}` : item.name;
@@ -255,25 +295,31 @@ export async function extractFilesFromText(
   // Analyze dependencies for each extracted file
   for (const file of extractedFiles) {
     const { dependencies } = await analyzeFileDependencies(file, files);
-    dependencies.forEach(dep => allDependencies.add(dep));
+    dependencies.forEach((dep) => allDependencies.add(dep));
   }
 
   return { files: extractedFiles, dependencies: allDependencies };
 }
 
+/**
+ * Aggregates extracted files and their dependencies.
+ */
 export async function aggregateExtractedFiles(
-  extractedFiles: { files: FileType[]; dependencies: Set<string> },
+  extractedFiles: FileType[],
   files: (FileType | FolderType)[]
 ): Promise<string> {
   let aggregatedCode = '';
   const processedFiles = new Set<string>();
 
-  function findFileByPath(items: (FileType | FolderType)[], targetPath: string): FileType | null {
+  function findFileByPath(
+    items: (FileType | FolderType)[],
+    targetPath: string
+  ): FileType | null {
     for (const item of items) {
       if ('items' in item) {
         const found = findFileByPath(item.items, targetPath);
         if (found) return found;
-      } else if (targetPath.endsWith(item.name)) {
+      } else if (item.id === targetPath || item.name === targetPath) {
         return item;
       }
     }
@@ -286,40 +332,39 @@ export async function aggregateExtractedFiles(
 
     const indentation = ' '.repeat(indent);
     aggregatedCode += `\n${indentation}// File: ${file.name}\n`;
-    aggregatedCode += `${indentation}${file.content.split('\n').join(`\n${indentation}`)}\n`;
+    aggregatedCode += `${indentation}${file.content
+      .split('\n')
+      .join(`\n${indentation}`)}\n`;
     aggregatedCode += `${indentation}// End of file\n`;
-  }
-
-  // Add dependencies first
-  if (extractedFiles.dependencies.size > 0) {
-    aggregatedCode += '\n// Dependencies:\n';
-    for (const dep of extractedFiles.dependencies) {
-      const depFile = findFileByPath(files, dep);
-      if (depFile) {
-        addFileContent(depFile, 2);
-      }
-    }
   }
 
   // Add extracted files
   aggregatedCode += '\n// Extracted Files:\n';
-  for (const file of extractedFiles.files) {
+  for (const file of extractedFiles) {
     addFileContent(file);
   }
 
   return aggregatedCode;
 }
 
+/**
+ * Determines if a filename should be excluded based on patterns.
+ */
 function shouldExclude(name: string, excludePatterns: string[]): boolean {
-  return excludePatterns.some(pattern => {
+  return excludePatterns.some((pattern) => {
     if (pattern.includes('*')) {
-      const regex = new RegExp('^' + pattern.replace('*', '.*') + '$');
+      const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
       return regex.test(name);
     }
     return name === pattern;
   });
 }
 
+/**
+ * Checks if a filename has one of the specified code extensions.
+ */
 function hasCodeExtension(filename: string, codeExtensions: string[]): boolean {
-  return codeExtensions.some(ext => filename.endsWith(ext));
+  return codeExtensions.some((ext) =>
+    filename.toLowerCase().endsWith(ext.toLowerCase())
+  );
 }

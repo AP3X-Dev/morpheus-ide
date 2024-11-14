@@ -67,3 +67,70 @@ body {
   src: url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
   font-display: swap;
 }
+
+
+        
+
+/* Modal Styles */
+.fixed {
+  position: fixed;
+}
+
+.inset-0 {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+.bg-black {
+  background-color: black;
+}
+
+.bg-opacity-50 {
+  background-opacity: 0.5;
+}
+
+.flex {
+  display: flex;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.z-50 {
+  z-index: 50;
+}
+
+.bg-editor-bg {
+  background-color: #1e1e1e; /* Example background color */
+}
+
+.text-editor-text {
+  color: #ffffff; /* Example text color */
+}
+
+.text-editor-icon {
+  color: #c0c0c0; /* Example icon color */
+}
+
+.border-editor-border {
+  border-color: #3c3c3c; /* Example border color */
+}
+
+.focus\:outline-none:focus {
+  outline: none;
+}
+
+.focus\:border-editor-active:focus {
+  border-color: #007acc; /* Example focus border color */
+}
+
+.bg-editor-active {
+  background-color: #333333; /* Example active background color */
+}

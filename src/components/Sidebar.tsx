@@ -1,3 +1,5 @@
+// File: morpheus-ide-main/src/components/Sidebar.tsx
+
 import React from 'react';
 import { ChevronDown, ChevronRight, FileText, Folder } from 'lucide-react';
 import { FileType, FolderType } from '../types';
@@ -11,33 +13,53 @@ interface SidebarProps {
 const getFileIcon = (fileName: string) => {
   const ext = fileName.split('.').pop()?.toLowerCase();
   const iconClasses = 'w-4 h-4 mr-2';
-  
+
   switch (ext) {
     case 'js':
     case 'jsx':
-      return <span className={`${iconClasses} text-yellow-400`}><FileText /></span>;
+      return (
+        <span className={`${iconClasses} text-yellow-400`}>
+          <FileText />
+        </span>
+      );
     case 'ts':
     case 'tsx':
-      return <span className={`${iconClasses} text-blue-400`}><FileText /></span>;
+      return (
+        <span className={`${iconClasses} text-blue-400`}>
+          <FileText />
+        </span>
+      );
     case 'py':
-      return <span className={`${iconClasses} text-green-400`}><FileText /></span>;
+      return (
+        <span className={`${iconClasses} text-green-400`}>
+          <FileText />
+        </span>
+      );
     case 'html':
-      return <span className={`${iconClasses} text-orange-400`}><FileText /></span>;
+      return (
+        <span className={`${iconClasses} text-orange-400`}>
+          <FileText />
+        </span>
+      );
     case 'css':
     case 'scss':
     case 'less':
-      return <span className={`${iconClasses} text-purple-400`}><FileText /></span>;
+      return (
+        <span className={`${iconClasses} text-purple-400`}>
+          <FileText />
+        </span>
+      );
     default:
       return <FileText className={`${iconClasses} text-editor-icon`} />;
   }
 };
 
-const FileTreeItem = ({ 
-  item, 
-  onFileSelect, 
+const FileTreeItem = ({
+  item,
+  onFileSelect,
   onToggleFolder,
-  depth = 0 
-}: { 
+  depth = 0,
+}: {
   item: FileType | FolderType;
   onFileSelect: (file: FileType) => void;
   onToggleFolder: (folderId: string) => void;

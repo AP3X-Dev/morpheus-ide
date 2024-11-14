@@ -1,16 +1,15 @@
-import React, { useState } from 'react';
+// File: src/components/CodeContextModal.tsx
+
+import React, { useState, useEffect } from 'react';
 import {
   X,
-  FolderTree,
-  FileCode,
-  GitFork,
-  Settings,
-  ArrowRight,
-  ArrowLeft,
   Download,
-  Clipboard,
+  FileText,
+  FileCode,
+  Folder as FolderIcon,
+  File as FileIcon,
 } from 'lucide-react';
-import { FileType, FolderType } from '../types';
+import { FileType, FolderType, TreeNode } from '../types';
 import {
   generateFileTree,
   exportTreeToFormat,
@@ -20,7 +19,6 @@ import {
   aggregateFileWithDependencies,
   extractFilesFromText,
   aggregateExtractedFiles,
-  TreeNode,
 } from '../utils/codeContextUtils';
 
 interface CodeContextModalProps {
@@ -29,53 +27,43 @@ interface CodeContextModalProps {
   files: (FileType | FolderType)[];
 }
 
-type ContextView = 'tree' | 'aggregate' | 'dependencies' | 'settings' | 'paste';
-type ExportFormat = 'json' | 'markdown' | 'text';
-
-interface DependencyAnalysis {
-  dependencies: string[];
-  dependents: string[];
-}
-
 export default function CodeContextModal({
   isOpen,
   onClose,
   files,
 }: CodeContextModalProps) {
-  const [view, setView] = useState<ContextView>('tree');
-  const [selectedFile, setSelectedFile] = useState<FileType | null>(null);
+  const [view, setView] = useState<
+    'tree' | 'aggregate' | 'dependencies' | 'paste' | 'settings'
+  >('tree');
   const [treeData, setTreeData] = useState<TreeNode[]>([]);
   const [aggregatedCode, setAggregatedCode] = useState<string>('');
-  const [dependencyAnalysis, setDependencyAnalysis] =
-    useState<DependencyAnalysis | null>(null);
   const [dependencyCode, setDependencyCode] = useState<string>('');
+  const [dependencyAnalysis, setDependencyAnalysis] = useState<{
+    dependencies: string[];
+    dependents: string[];
+  } | null>(null);
+  const [selectedFile, setSelectedFile] = useState<FileType | null>(null);
   const [pastedText, setPastedText] = useState<string>('');
   const [extractedFilesCode, setExtractedFilesCode] = useState<string>('');
   const [config, setConfig] = useState({
-    excludePatterns: ['node_modules', '.git', '*.log'],
-    codeExtensions: [
-      '.js',
-      '.jsx',
-      '.ts',
-      '.tsx',
-      '.py',
-      '.java',
-      '.cpp',
-      '.c',
-    ],
+    excludePatterns: ['node_modules', '.git'],
+    codeExtensions: ['.js', '.jsx', '.ts', '.tsx', '.py', '.java'],
   });
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (isOpen && view === 'tree') {
+      handleGenerateTree();
+    }
+  }, [isOpen, view]);
 
   const handleGenerateTree = async () => {
     const tree = await generateFileTree(files, config.excludePatterns);
     setTreeData(tree);
   };
 
-  const handleExportTree = (format: ExportFormat) => {
-    if (treeData.length === 0) return;
+  const handleExportTree = (format: 'json' | 'markdown' | 'text') => {
     const content = exportTreeToFormat(treeData, format);
-    downloadTree(content, `project-tree.${format}`);
+    downloadTree(content, format);
   };
 
   const handleAggregateCode = async () => {
@@ -87,9 +75,8 @@ export default function CodeContextModal({
     setAggregatedCode(code);
   };
 
-  const handleExportAggregatedCode = (code: string, filename: string) => {
-    if (!code) return;
-    const blob = new Blob([code], { type: 'text/plain;charset=utf-8' });
+  const handleExportAggregatedCode = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -104,155 +91,156 @@ export default function CodeContextModal({
     if (!selectedFile) return;
     const analysis = await analyzeFileDependencies(selectedFile, files);
     setDependencyAnalysis(analysis);
-    const code = await aggregateFileWithDependencies(
+    const aggregated = await aggregateFileWithDependencies(
       selectedFile,
       files,
       analysis
     );
-    setDependencyCode(code);
+    setDependencyCode(aggregated);
   };
 
   const handleAnalyzePastedText = async () => {
-    if (!pastedText.trim()) return;
-    const extractedFiles = await extractFilesFromText(
+    const { files: extractedFiles } = await extractFilesFromText(
       pastedText,
       files,
       config.excludePatterns
     );
-    const code = await aggregateExtractedFiles(extractedFiles, files);
-    setExtractedFilesCode(code);
-  };
-
-  const handleFileSelect = (file: FileType) => {
-    setSelectedFile(file);
-    setDependencyAnalysis(null);
-    setDependencyCode('');
+    const aggregated = await aggregateExtractedFiles(extractedFiles, files);
+    setExtractedFilesCode(aggregated);
   };
 
   const renderTreeNode = (
     node: TreeNode,
-    level: number = 0,
-    forFileSelect: boolean = false
+    depth: number = 0,
+    selectable: boolean = false
   ) => {
-    const indent = level * 20;
+    const isFolder = node.type === 'folder';
     return (
-      <div key={node.path}>
-        <div
-          className={`flex items-center py-1 hover:bg-editor-active rounded px-2 ${
-            forFileSelect && !('children' in node) ? 'cursor-pointer' : ''
-          }`}
-          style={{ paddingLeft: `${indent}px` }}
-          onClick={() => {
-            if (forFileSelect && !('children' in node) && node.path) {
-              const file = findFileByPath(files, node.path);
-              if (file) handleFileSelect(file);
-            }
-          }}
-        >
-          {node.type === 'folder' ? (
-            <FolderTree className="w-4 h-4 mr-2 text-editor-icon" />
+      <div key={node.path} style={{ paddingLeft: `${depth * 1.25}rem` }}>
+        <div className="flex items-center">
+          {isFolder ? (
+            <FolderIcon className="w-4 h-4 mr-2 text-editor-icon" />
           ) : (
-            <FileCode className="w-4 h-4 mr-2 text-editor-icon" />
+            <FileIcon className="w-4 h-4 mr-2 text-editor-icon" />
           )}
-          <span className="text-editor-text text-sm">{node.name}</span>
+          {selectable ? (
+            <button
+              onClick={() => {
+                const file = findFileByPath(files, node.path || '');
+                if (file && !('items' in file)) {
+                  setSelectedFile(file);
+                }
+              }}
+              className={`text-left flex-1 ${
+                selectedFile?.id === node.path
+                  ? 'text-editor-text font-semibold'
+                  : 'text-editor-icon'
+              }`}
+            >
+              {node.name}
+            </button>
+          ) : (
+            <span className="flex-1 text-editor-text">{node.name}</span>
+          )}
         </div>
-        {node.children?.map((child) =>
-          renderTreeNode(child, level + 1, forFileSelect)
-        )}
+        {node.children &&
+          node.children.map((child) =>
+            renderTreeNode(child, depth + 1, selectable)
+          )}
       </div>
     );
   };
 
   const findFileByPath = (
     items: (FileType | FolderType)[],
-    path: string
+    targetPath: string
   ): FileType | null => {
     for (const item of items) {
       if ('items' in item) {
-        const found = findFileByPath(item.items, path);
+        const found = findFileByPath(item.items, targetPath);
         if (found) return found;
-      } else if (path.endsWith(item.name)) {
+      } else if (item.id === targetPath) {
         return item;
       }
     }
     return null;
   };
 
+  if (!isOpen) return null;
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-editor-bg border border-editor-border rounded-lg w-[800px] max-h-[80vh] flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b border-editor-border">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+      <div className="bg-editor-bg w-3/4 h-3/4 rounded-lg shadow-lg overflow-hidden flex flex-col">
+        <div className="flex justify-between items-center p-4 border-b border-editor-border">
           <h2 className="text-lg font-semibold text-editor-text">
             Code Context Manager
           </h2>
           <button
             onClick={onClose}
-            className="p-2 text-editor-icon hover:text-editor-text hover:bg-editor-active rounded"
+            className="text-editor-icon hover:text-editor-text"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="flex flex-1 min-h-0">
-          <div className="w-16 border-r border-editor-border bg-editor-sidebar">
-            <button
-              onClick={() => setView('tree')}
-              className={`w-full p-4 flex flex-col items-center gap-1 ${
-                view === 'tree'
-                  ? 'text-editor-text bg-editor-active'
-                  : 'text-editor-icon hover:text-editor-text hover:bg-editor-active'
-              }`}
-            >
-              <FolderTree className="w-5 h-5" />
-              <span className="text-xs">Tree</span>
-            </button>
-            <button
-              onClick={() => setView('aggregate')}
-              className={`w-full p-4 flex flex-col items-center gap-1 ${
-                view === 'aggregate'
-                  ? 'text-editor-text bg-editor-active'
-                  : 'text-editor-icon hover:text-editor-text hover:bg-editor-active'
-              }`}
-            >
-              <FileCode className="w-5 h-5" />
-              <span className="text-xs">Code</span>
-            </button>
-            <button
-              onClick={() => setView('dependencies')}
-              className={`w-full p-4 flex flex-col items-center gap-1 ${
-                view === 'dependencies'
-                  ? 'text-editor-text bg-editor-active'
-                  : 'text-editor-icon hover:text-editor-text hover:bg-editor-active'
-              }`}
-            >
-              <GitFork className="w-5 h-5" />
-              <span className="text-xs">Deps</span>
-            </button>
-            <button
-              onClick={() => setView('paste')}
-              className={`w-full p-4 flex flex-col items-center gap-1 ${
-                view === 'paste'
-                  ? 'text-editor-text bg-editor-active'
-                  : 'text-editor-icon hover:text-editor-text hover:bg-editor-active'
-              }`}
-            >
-              <Clipboard className="w-5 h-5" />
-              <span className="text-xs">Paste</span>
-            </button>
-            <button
-              onClick={() => setView('settings')}
-              className={`w-full p-4 flex flex-col items-center gap-1 ${
-                view === 'settings'
-                  ? 'text-editor-text bg-editor-active'
-                  : 'text-editor-icon hover:text-editor-text hover:bg-editor-active'
-              }`}
-            >
-              <Settings className="w-5 h-5" />
-              <span className="text-xs">Config</span>
-            </button>
+        <div className="flex flex-1">
+          <div className="w-1/4 bg-editor-sidebar p-4">
+            <div className="space-y-2">
+              <button
+                onClick={() => setView('tree')}
+                className={`w-full text-left px-2 py-1 rounded ${
+                  view === 'tree'
+                    ? 'bg-editor-active text-editor-text'
+                    : 'text-editor-icon hover:bg-editor-active'
+                }`}
+              >
+                File Tree
+              </button>
+              <button
+                onClick={() => setView('aggregate')}
+                className={`w-full text-left px-2 py-1 rounded ${
+                  view === 'aggregate'
+                    ? 'bg-editor-active text-editor-text'
+                    : 'text-editor-icon hover:bg-editor-active'
+                }`}
+              >
+                Aggregate Code
+              </button>
+              <button
+                onClick={() => setView('dependencies')}
+                className={`w-full text-left px-2 py-1 rounded ${
+                  view === 'dependencies'
+                    ? 'bg-editor-active text-editor-text'
+                    : 'text-editor-icon hover:bg-editor-active'
+                }`}
+              >
+                Dependencies Analysis
+              </button>
+              <button
+                onClick={() => setView('paste')}
+                className={`w-full text-left px-2 py-1 rounded ${
+                  view === 'paste'
+                    ? 'bg-editor-active text-editor-text'
+                    : 'text-editor-icon hover:bg-editor-active'
+                }`}
+              >
+                Paste Analysis
+              </button>
+              <button
+                onClick={() => setView('settings')}
+                className={`w-full text-left px-2 py-1 rounded ${
+                  view === 'settings'
+                    ? 'bg-editor-active text-editor-text'
+                    : 'text-editor-icon hover:bg-editor-active'
+                }`}
+              >
+                Settings
+              </button>
+            </div>
           </div>
 
           <div className="flex-1 p-4 overflow-auto">
+            {/* Render views based on the selected tab */}
             {view === 'tree' && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
@@ -326,6 +314,7 @@ export default function CodeContextModal({
                       className="px-3 py-1.5 text-sm bg-editor-active text-editor-text rounded hover:bg-opacity-80"
                       disabled={!aggregatedCode}
                     >
+                      <Download className="w-4 h-4 mr-1 inline" />
                       Export
                     </button>
                   </div>
@@ -365,7 +354,8 @@ export default function CodeContextModal({
                         className="px-3 py-1.5 text-sm bg-editor-active text-editor-text rounded hover:bg-opacity-80"
                         title="Export Dependencies"
                       >
-                        <Download className="w-4 h-4" />
+                        <Download className="w-4 h-4 mr-1 inline" />
+                        Export
                       </button>
                     )}
                   </div>
@@ -396,7 +386,7 @@ export default function CodeContextModal({
                           Selected File
                         </h4>
                         <div className="flex items-center text-editor-text bg-editor-active rounded p-2">
-                          <FileCode className="w-4 h-4 mr-2" />
+                          <FileText className="w-4 h-4 mr-2" />
                           {selectedFile.name}
                         </div>
                       </div>
@@ -405,8 +395,7 @@ export default function CodeContextModal({
                         <div className="space-y-4">
                           <div>
                             <h4 className="text-sm font-medium text-editor-text mb-2">
-                              Dependencies{' '}
-                              <ArrowRight className="w-4 h-4 inline" />
+                              Dependencies
                             </h4>
                             <div className="space-y-1">
                               {dependencyAnalysis.dependencies.length > 0 ? (
@@ -431,7 +420,6 @@ export default function CodeContextModal({
 
                           <div>
                             <h4 className="text-sm font-medium text-editor-text mb-2">
-                              <ArrowLeft className="w-4 h-4 inline" />{' '}
                               Dependents
                             </h4>
                             <div className="space-y-1">
@@ -498,7 +486,8 @@ export default function CodeContextModal({
                         className="px-3 py-1.5 text-sm bg-editor-active text-editor-text rounded hover:bg-opacity-80"
                         title="Export Extracted Files"
                       >
-                        <Download className="w-4 h-4" />
+                        <Download className="w-4 h-4 mr-1 inline" />
+                        Export
                       </button>
                     )}
                   </div>
@@ -617,6 +606,7 @@ export default function CodeContextModal({
                 </div>
               </div>
             )}
+            {/* End of views */}
           </div>
         </div>
       </div>

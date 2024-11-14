@@ -1,3 +1,5 @@
+// File: morpheus-ide-main/tailwind.config.js
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
@@ -10,9 +12,9 @@ export default {
           active: '#37373d',
           border: '#3e3e3e',
           text: '#cccccc',
-          icon: '#858585'
-        }
-      }
+          icon: '#858585',
+        },
+      },
     },
   },
   plugins: [],

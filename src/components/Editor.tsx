@@ -1,3 +1,5 @@
+// File: components/Editor.tsx
+
 import { useEffect, useRef, useState } from 'react';
 import MonacoEditor, { loader } from '@monaco-editor/react';
 import { FileType } from '../types';
@@ -8,11 +10,15 @@ loader.config({ monaco: undefined });
 
 interface EditorProps {
   file: FileType | null;
-  theme?: string; // Made optional with a default
+  theme?: string;
   onContentChange: (fileId: string, content: string) => void;
 }
 
-export default function Editor({ file, theme = 'vs-dark', onContentChange }: EditorProps) {
+export default function Editor({
+  file,
+  theme = 'vs-dark',
+  onContentChange,
+}: EditorProps) {
   const monacoRef = useRef(null);
   const [editorKey, setEditorKey] = useState(0);
   const resizeTimeoutRef = useRef<number | null>(null);
@@ -23,7 +29,7 @@ export default function Editor({ file, theme = 'vs-dark', onContentChange }: Edi
         window.clearTimeout(resizeTimeoutRef.current);
       }
       resizeTimeoutRef.current = window.setTimeout(() => {
-        setEditorKey(prev => prev + 1);
+        setEditorKey((prev) => prev + 1);
       }, 100);
     };
 
@@ -38,40 +44,6 @@ export default function Editor({ file, theme = 'vs-dark', onContentChange }: Edi
 
   const handleEditorDidMount = (editor: any, monaco: any) => {
     monacoRef.current = monaco;
-
-    // Optional: Define a custom dark theme
-    // monaco.editor.defineTheme('my-dark-theme', {
-    //   base: 'vs-dark',
-    //   inherit: true,
-    //   rules: [],
-    //   colors: {
-    //     'editor.background': '#1E1E1E',
-    //   },
-    // });
-    // monaco.editor.setTheme('my-dark-theme');
-
-    // Configure Python specific settings
-    monaco.languages.registerCompletionItemProvider('python', {
-      provideCompletionItems: () => {
-        const suggestions = [
-          {
-            label: 'def',
-            kind: monaco.languages.CompletionItemKind.Snippet,
-            insertText: 'def ${1:name}(${2:params}):\n\t${0:pass}',
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            documentation: 'Function definition'
-          },
-          {
-            label: 'class',
-            kind: monaco.languages.CompletionItemKind.Snippet,
-            insertText: 'class ${1:name}:\n\tdef __init__(self):\n\t\t${0:pass}',
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            documentation: 'Class definition'
-          }
-        ];
-        return { suggestions };
-      }
-    });
 
     // Disable the default format on paste for better performance
     editor.getModel()?.updateOptions({ formatOnPaste: false });
@@ -92,8 +64,10 @@ export default function Editor({ file, theme = 'vs-dark', onContentChange }: Edi
         height="100%"
         language={getFileLanguage(file.name)}
         value={file.content}
-        theme={theme} // Ensure this is set to 'vs-dark' or your chosen dark theme
-        onChange={(value) => onContentChange(file.id, value || '')}
+        theme={theme}
+        onChange={(value) => {
+          onContentChange(file.id, value || '');
+        }}
         onMount={handleEditorDidMount}
         options={{
           fontSize: 14,
@@ -110,7 +84,7 @@ export default function Editor({ file, theme = 'vs-dark', onContentChange }: Edi
           renderWhitespace: 'selection',
           smoothScrolling: true,
           bracketPairColorization: {
-            enabled: true
+            enabled: true,
           },
           formatOnPaste: false,
           formatOnType: false,
@@ -118,16 +92,16 @@ export default function Editor({ file, theme = 'vs-dark', onContentChange }: Edi
           autoClosingQuotes: 'always',
           guides: {
             bracketPairs: true,
-            indentation: true
+            indentation: true,
           },
           suggest: {
-            snippetsPreventQuickSuggestions: false
+            snippetsPreventQuickSuggestions: false,
           },
           quickSuggestions: {
             other: true,
             comments: true,
-            strings: true
-          }
+            strings: true,
+          },
         }}
       />
     </div>

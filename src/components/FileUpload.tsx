@@ -1,6 +1,8 @@
-import React, { useRef, ReactNode } from 'react';
+// File: components/FileUpload.tsx
+
+import React, { ReactNode } from 'react';
 import { FileType, FolderType } from '../types';
-import { handleZipUpload } from '../utils/fileUtils';
+import { readDirectoryRecursively } from '../utils/fileUtils';
 
 interface FileUploadProps {
   onFileUpload: (files: (FileType | FolderType)[]) => void;
@@ -8,44 +10,22 @@ interface FileUploadProps {
 }
 
 export default function FileUpload({ onFileUpload, children }: FileUploadProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file && file.name.endsWith('.zip')) {
+  const handleOpenFolder = async () => {
+    if ('showDirectoryPicker' in window) {
       try {
-        const files = await handleZipUpload(file);
+        const directoryHandle = await (window as any).showDirectoryPicker({
+          writable: true,
+        });
+        const files = await readDirectoryRecursively(directoryHandle);
         onFileUpload(files);
       } catch (error) {
-        console.error('Error processing ZIP file:', error);
-        alert('Error processing ZIP file. Please try again.');
+        console.error('Error accessing directory:', error);
+        alert('Error accessing directory. Please try again.');
       }
     } else {
-      alert('Please select a ZIP file.');
-    }
-    
-    // Reset input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      alert('Your browser does not support the File System Access API.');
     }
   };
 
-  return (
-    <div>
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileChange}
-        accept=".zip"
-        className="hidden"
-      />
-      <div onClick={handleUploadClick}>
-        {children}
-      </div>
-    </div>
-  );
+  return <div onClick={handleOpenFolder}>{children}</div>;
 }
