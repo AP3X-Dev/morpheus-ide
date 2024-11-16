@@ -10,15 +10,32 @@ body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   background-color: #1e1e1e;
+  color: #d4d4d4;
 }
 
 /* Monaco Editor Customizations */
+.monaco-editor {
+  background-color: #1e1e1e !important;
+}
+
 .monaco-editor .margin {
   background-color: #1e1e1e !important;
 }
 
 .monaco-editor .line-numbers {
   color: #6b7280 !important;
+}
+
+.monaco-editor .monaco-editor-background {
+  background-color: #1e1e1e !important;
+}
+
+.monaco-editor .editor-widget {
+  background-color: #1e1e1e !important;
+}
+
+.monaco-editor .suggest-widget {
+  background-color: #1e1e1e !important;
 }
 
 /* Custom Scrollbar */
@@ -68,69 +85,35 @@ body {
   font-display: swap;
 }
 
-
-        
-
-/* Modal Styles */
-.fixed {
-  position: fixed;
+/* Force dark theme on Monaco editor components */
+.monaco-editor .minimap {
+  background-color: #1e1e1e !important;
 }
 
-.inset-0 {
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
+.monaco-editor .suggest-widget,
+.monaco-editor .suggest-widget .monaco-list,
+.monaco-editor .suggest-widget .monaco-list .monaco-list-row,
+.monaco-editor .suggest-widget .monaco-list .monaco-list-row.focused {
+  background-color: #1e1e1e !important;
+  color: #d4d4d4 !important;
 }
 
-.bg-black {
-  background-color: black;
+.monaco-editor .parameter-hints-widget {
+  background-color: #1e1e1e !important;
+  border: 1px solid #3e3e3e !important;
 }
 
-.bg-opacity-50 {
-  background-opacity: 0.5;
+.monaco-editor .monaco-hover {
+  background-color: #1e1e1e !important;
+  border: 1px solid #3e3e3e !important;
 }
 
-.flex {
-  display: flex;
+/* Force dark theme on editor overlays */
+.monaco-editor .overlayWidgets {
+  background-color: #1e1e1e !important;
 }
 
-.justify-center {
-  justify-content: center;
-}
-
-.items-center {
-  align-items: center;
-}
-
-.z-50 {
-  z-index: 50;
-}
-
-.bg-editor-bg {
-  background-color: #1e1e1e; /* Example background color */
-}
-
-.text-editor-text {
-  color: #ffffff; /* Example text color */
-}
-
-.text-editor-icon {
-  color: #c0c0c0; /* Example icon color */
-}
-
-.border-editor-border {
-  border-color: #3c3c3c; /* Example border color */
-}
-
-.focus\:outline-none:focus {
-  outline: none;
-}
-
-.focus\:border-editor-active:focus {
-  border-color: #007acc; /* Example focus border color */
-}
-
-.bg-editor-active {
-  background-color: #333333; /* Example active background color */
+.monaco-editor .find-widget {
+  background-color: #1e1e1e !important;
+  border: 1px solid #3e3e3e !important;
 }

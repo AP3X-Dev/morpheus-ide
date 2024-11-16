@@ -1,15 +1,16 @@
-// File: src/components/CodeContextModal.tsx
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   X,
-  Download,
-  FileText,
+  FolderTree,
   FileCode,
-  Folder as FolderIcon,
-  File as FileIcon,
+  GitFork,
+  Settings,
+  ArrowRight,
+  ArrowLeft,
+  Download,
+  Clipboard,
 } from 'lucide-react';
-import { FileType, FolderType, TreeNode } from '../types';
+import { FileType, FolderType } from '../types';
 import {
   generateFileTree,
   exportTreeToFormat,
@@ -19,7 +20,9 @@ import {
   aggregateFileWithDependencies,
   extractFilesFromText,
   aggregateExtractedFiles,
-} from '../utils/codeContextUtils';
+  TreeNode,
+  DependencyAnalysis
+} from '../utils/codeContext';
 
 interface CodeContextModalProps {
   isOpen: boolean;
@@ -27,41 +30,36 @@ interface CodeContextModalProps {
   files: (FileType | FolderType)[];
 }
 
+type ContextView = 'tree' | 'aggregate' | 'dependencies' | 'settings' | 'paste';
+type ExportFormat = 'json' | 'markdown' | 'text';
+
 export default function CodeContextModal({
   isOpen,
   onClose,
   files,
 }: CodeContextModalProps) {
-  const [view, setView] = useState<
-    'tree' | 'aggregate' | 'dependencies' | 'paste' | 'settings'
-  >('tree');
+  const [view, setView] = useState<ContextView>('tree');
+  const [selectedFile, setSelectedFile] = useState<FileType | null>(null);
   const [treeData, setTreeData] = useState<TreeNode[]>([]);
   const [aggregatedCode, setAggregatedCode] = useState<string>('');
+  const [dependencyAnalysis, setDependencyAnalysis] = useState<DependencyAnalysis | null>(null);
   const [dependencyCode, setDependencyCode] = useState<string>('');
-  const [dependencyAnalysis, setDependencyAnalysis] = useState<{
-    dependencies: string[];
-    dependents: string[];
-  } | null>(null);
-  const [selectedFile, setSelectedFile] = useState<FileType | null>(null);
   const [pastedText, setPastedText] = useState<string>('');
   const [extractedFilesCode, setExtractedFilesCode] = useState<string>('');
   const [config, setConfig] = useState({
-    excludePatterns: ['node_modules', '.git'],
-    codeExtensions: ['.js', '.jsx', '.ts', '.tsx', '.py', '.java'],
+    excludePatterns: ['node_modules', '.git', '*.log'],
+    codeExtensions: ['.js', '.jsx', '.ts', '.tsx', '.py', '.java', '.cpp', '.c'],
   });
 
-  useEffect(() => {
-    if (isOpen && view === 'tree') {
-      handleGenerateTree();
-    }
-  }, [isOpen, view]);
+  if (!isOpen) return null;
 
   const handleGenerateTree = async () => {
     const tree = await generateFileTree(files, config.excludePatterns);
     setTreeData(tree);
   };
 
-  const handleExportTree = (format: 'json' | 'markdown' | 'text') => {
+  const handleExportTree = (format: ExportFormat) => {
+    if (treeData.length === 0) return;
     const content = exportTreeToFormat(treeData, format);
     downloadTree(content, format);
   };
@@ -75,8 +73,9 @@ export default function CodeContextModal({
     setAggregatedCode(code);
   };
 
-  const handleExportAggregatedCode = (content: string, filename: string) => {
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const handleExportAggregatedCode = (code: string, filename: string) => {
+    if (!code) return;
+    const blob = new Blob([code], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -91,156 +90,142 @@ export default function CodeContextModal({
     if (!selectedFile) return;
     const analysis = await analyzeFileDependencies(selectedFile, files);
     setDependencyAnalysis(analysis);
-    const aggregated = await aggregateFileWithDependencies(
-      selectedFile,
-      files,
-      analysis
-    );
-    setDependencyCode(aggregated);
+    const code = await aggregateFileWithDependencies(selectedFile, files, analysis);
+    setDependencyCode(code);
   };
 
   const handleAnalyzePastedText = async () => {
-    const { files: extractedFiles } = await extractFilesFromText(
+    if (!pastedText.trim()) return;
+    const extractedFiles = await extractFilesFromText(
       pastedText,
       files,
       config.excludePatterns
     );
-    const aggregated = await aggregateExtractedFiles(extractedFiles, files);
-    setExtractedFilesCode(aggregated);
+    const code = await aggregateExtractedFiles(extractedFiles, files);
+    setExtractedFilesCode(code);
   };
 
-  const renderTreeNode = (
-    node: TreeNode,
-    depth: number = 0,
-    selectable: boolean = false
-  ) => {
-    const isFolder = node.type === 'folder';
+  const handleFileSelect = (file: FileType) => {
+    setSelectedFile(file);
+    setDependencyAnalysis(null);
+    setDependencyCode('');
+  };
+
+  const renderTreeNode = (node: TreeNode, level: number = 0, forFileSelect: boolean = false) => {
+    const indent = level * 20;
     return (
-      <div key={node.path} style={{ paddingLeft: `${depth * 1.25}rem` }}>
-        <div className="flex items-center">
-          {isFolder ? (
-            <FolderIcon className="w-4 h-4 mr-2 text-editor-icon" />
+      <div key={node.path}>
+        <div
+          className={`flex items-center py-1 hover:bg-editor-active rounded px-2 ${
+            forFileSelect && !('children' in node) ? 'cursor-pointer' : ''
+          }`}
+          style={{ paddingLeft: `${indent}px` }}
+          onClick={() => {
+            if (forFileSelect && !('children' in node) && node.path) {
+              const file = findFileByPath(files, node.path);
+              if (file) handleFileSelect(file);
+            }
+          }}
+        >
+          {node.type === 'folder' ? (
+            <FolderTree className="w-4 h-4 mr-2 text-editor-icon" />
           ) : (
-            <FileIcon className="w-4 h-4 mr-2 text-editor-icon" />
+            <FileCode className="w-4 h-4 mr-2 text-editor-icon" />
           )}
-          {selectable ? (
-            <button
-              onClick={() => {
-                const file = findFileByPath(files, node.path || '');
-                if (file && !('items' in file)) {
-                  setSelectedFile(file);
-                }
-              }}
-              className={`text-left flex-1 ${
-                selectedFile?.id === node.path
-                  ? 'text-editor-text font-semibold'
-                  : 'text-editor-icon'
-              }`}
-            >
-              {node.name}
-            </button>
-          ) : (
-            <span className="flex-1 text-editor-text">{node.name}</span>
-          )}
+          <span className="text-editor-text text-sm">{node.name}</span>
         </div>
-        {node.children &&
-          node.children.map((child) =>
-            renderTreeNode(child, depth + 1, selectable)
-          )}
+        {node.children?.map((child) =>
+          renderTreeNode(child, level + 1, forFileSelect)
+        )}
       </div>
     );
   };
 
-  const findFileByPath = (
-    items: (FileType | FolderType)[],
-    targetPath: string
-  ): FileType | null => {
+  const findFileByPath = (items: (FileType | FolderType)[], path: string): FileType | null => {
     for (const item of items) {
       if ('items' in item) {
-        const found = findFileByPath(item.items, targetPath);
+        const found = findFileByPath(item.items, path);
         if (found) return found;
-      } else if (item.id === targetPath) {
+      } else if (path.endsWith(item.name)) {
         return item;
       }
     }
     return null;
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-      <div className="bg-editor-bg w-3/4 h-3/4 rounded-lg shadow-lg overflow-hidden flex flex-col">
-        <div className="flex justify-between items-center p-4 border-b border-editor-border">
-          <h2 className="text-lg font-semibold text-editor-text">
-            Code Context Manager
-          </h2>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-editor-bg border border-editor-border rounded-lg w-[800px] h-[600px] flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b border-editor-border">
+          <h2 className="text-lg font-semibold text-editor-text">Code Context Manager</h2>
           <button
             onClick={onClose}
-            className="text-editor-icon hover:text-editor-text"
+            className="p-2 text-editor-icon hover:text-editor-text hover:bg-editor-active rounded"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="flex flex-1">
-          <div className="w-1/4 bg-editor-sidebar p-4">
-            <div className="space-y-2">
-              <button
-                onClick={() => setView('tree')}
-                className={`w-full text-left px-2 py-1 rounded ${
-                  view === 'tree'
-                    ? 'bg-editor-active text-editor-text'
-                    : 'text-editor-icon hover:bg-editor-active'
-                }`}
-              >
-                File Tree
-              </button>
-              <button
-                onClick={() => setView('aggregate')}
-                className={`w-full text-left px-2 py-1 rounded ${
-                  view === 'aggregate'
-                    ? 'bg-editor-active text-editor-text'
-                    : 'text-editor-icon hover:bg-editor-active'
-                }`}
-              >
-                Aggregate Code
-              </button>
-              <button
-                onClick={() => setView('dependencies')}
-                className={`w-full text-left px-2 py-1 rounded ${
-                  view === 'dependencies'
-                    ? 'bg-editor-active text-editor-text'
-                    : 'text-editor-icon hover:bg-editor-active'
-                }`}
-              >
-                Dependencies Analysis
-              </button>
-              <button
-                onClick={() => setView('paste')}
-                className={`w-full text-left px-2 py-1 rounded ${
-                  view === 'paste'
-                    ? 'bg-editor-active text-editor-text'
-                    : 'text-editor-icon hover:bg-editor-active'
-                }`}
-              >
-                Paste Analysis
-              </button>
-              <button
-                onClick={() => setView('settings')}
-                className={`w-full text-left px-2 py-1 rounded ${
-                  view === 'settings'
-                    ? 'bg-editor-active text-editor-text'
-                    : 'text-editor-icon hover:bg-editor-active'
-                }`}
-              >
-                Settings
-              </button>
-            </div>
+        <div className="flex flex-1 min-h-0">
+          <div className="w-16 border-r border-editor-border bg-editor-sidebar">
+            <button
+              onClick={() => setView('tree')}
+              className={`w-full p-4 flex flex-col items-center gap-1 ${
+                view === 'tree'
+                  ? 'text-editor-text bg-editor-active'
+                  : 'text-editor-icon hover:text-editor-text hover:bg-editor-active'
+              }`}
+            >
+              <FolderTree className="w-5 h-5" />
+              <span className="text-xs">Tree</span>
+            </button>
+            <button
+              onClick={() => setView('aggregate')}
+              className={`w-full p-4 flex flex-col items-center gap-1 ${
+                view === 'aggregate'
+                  ? 'text-editor-text bg-editor-active'
+                  : 'text-editor-icon hover:text-editor-text hover:bg-editor-active'
+              }`}
+            >
+              <FileCode className="w-5 h-5" />
+              <span className="text-xs">Code</span>
+            </button>
+            <button
+              onClick={() => setView('dependencies')}
+              className={`w-full p-4 flex flex-col items-center gap-1 ${
+                view === 'dependencies'
+                  ? 'text-editor-text bg-editor-active'
+                  : 'text-editor-icon hover:text-editor-text hover:bg-editor-active'
+              }`}
+            >
+              <GitFork className="w-5 h-5" />
+              <span className="text-xs">Deps</span>
+            </button>
+            <button
+              onClick={() => setView('paste')}
+              className={`w-full p-4 flex flex-col items-center gap-1 ${
+                view === 'paste'
+                  ? 'text-editor-text bg-editor-active'
+                  : 'text-editor-icon hover:text-editor-text hover:bg-editor-active'
+              }`}
+            >
+              <Clipboard className="w-5 h-5" />
+              <span className="text-xs">Paste</span>
+            </button>
+            <button
+              onClick={() => setView('settings')}
+              className={`w-full p-4 flex flex-col items-center gap-1 ${
+                view === 'settings'
+                  ? 'text-editor-text bg-editor-active'
+                  : 'text-editor-icon hover:text-editor-text hover:bg-editor-active'
+              }`}
+            >
+              <Settings className="w-5 h-5" />
+              <span className="text-xs">Config</span>
+            </button>
           </div>
 
           <div className="flex-1 p-4 overflow-auto">
-            {/* Render views based on the selected tab */}
             {view === 'tree' && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
@@ -294,9 +279,7 @@ export default function CodeContextModal({
             {view === 'aggregate' && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-editor-text font-medium">
-                    Aggregate Code
-                  </h3>
+                  <h3 className="text-editor-text font-medium">Aggregate Code</h3>
                   <div className="flex gap-2">
                     <button
                       onClick={handleAggregateCode}
@@ -306,15 +289,11 @@ export default function CodeContextModal({
                     </button>
                     <button
                       onClick={() =>
-                        handleExportAggregatedCode(
-                          aggregatedCode,
-                          'aggregated-code.txt'
-                        )
+                        handleExportAggregatedCode(aggregatedCode, 'aggregated-code.txt')
                       }
                       className="px-3 py-1.5 text-sm bg-editor-active text-editor-text rounded hover:bg-opacity-80"
                       disabled={!aggregatedCode}
                     >
-                      <Download className="w-4 h-4 mr-1 inline" />
                       Export
                     </button>
                   </div>
@@ -332,9 +311,7 @@ export default function CodeContextModal({
             {view === 'dependencies' && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-editor-text font-medium">
-                    Dependencies Analysis
-                  </h3>
+                  <h3 className="text-editor-text font-medium">Dependencies Analysis</h3>
                   <div className="flex gap-2">
                     <button
                       onClick={handleAnalyzeDependencies}
@@ -346,16 +323,12 @@ export default function CodeContextModal({
                     {dependencyCode && (
                       <button
                         onClick={() =>
-                          handleExportAggregatedCode(
-                            dependencyCode,
-                            'dependency-analysis.txt'
-                          )
+                          handleExportAggregatedCode(dependencyCode, 'dependency-analysis.txt')
                         }
                         className="px-3 py-1.5 text-sm bg-editor-active text-editor-text rounded hover:bg-opacity-80"
                         title="Export Dependencies"
                       >
-                        <Download className="w-4 h-4 mr-1 inline" />
-                        Export
+                        <Download className="w-4 h-4" />
                       </button>
                     )}
                   </div>
@@ -363,14 +336,10 @@ export default function CodeContextModal({
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <h4 className="text-sm font-medium text-editor-text">
-                      Select File
-                    </h4>
+                    <h4 className="text-sm font-medium text-editor-text">Select File</h4>
                     <div className="border border-editor-border rounded overflow-auto max-h-[300px]">
                       {treeData.length > 0 ? (
-                        treeData.map((node) =>
-                          renderTreeNode(node, 0, true)
-                        )
+                        treeData.map((node) => renderTreeNode(node, 0, true))
                       ) : (
                         <div className="p-4 text-editor-icon text-sm">
                           Generate tree first to select a file
@@ -382,11 +351,9 @@ export default function CodeContextModal({
                   {selectedFile && (
                     <div className="space-y-4">
                       <div>
-                        <h4 className="text-sm font-medium text-editor-text mb-2">
-                          Selected File
-                        </h4>
+                        <h4 className="text-sm font-medium text-editor-text mb-2">Selected File</h4>
                         <div className="flex items-center text-editor-text bg-editor-active rounded p-2">
-                          <FileText className="w-4 h-4 mr-2" />
+                          <FileCode className="w-4 h-4 mr-2" />
                           {selectedFile.name}
                         </div>
                       </div>
@@ -395,50 +362,42 @@ export default function CodeContextModal({
                         <div className="space-y-4">
                           <div>
                             <h4 className="text-sm font-medium text-editor-text mb-2">
-                              Dependencies
+                              Dependencies <ArrowRight className="w-4 h-4 inline" />
                             </h4>
                             <div className="space-y-1">
                               {dependencyAnalysis.dependencies.length > 0 ? (
-                                dependencyAnalysis.dependencies.map(
-                                  (dep, i) => (
-                                    <div
-                                      key={i}
-                                      className="flex items-center text-editor-text bg-editor-sidebar rounded p-2"
-                                    >
-                                      <FileCode className="w-4 h-4 mr-2 text-editor-icon" />
-                                      {dep}
-                                    </div>
-                                  )
-                                )
+                                dependencyAnalysis.dependencies.map((dep, i) => (
+                                  <div
+                                    key={i}
+                                    className="flex items-center text-editor-text bg-editor-sidebar rounded p-2"
+                                  >
+                                    <FileCode className="w-4 h-4 mr-2 text-editor-icon" />
+                                    {dep}
+                                  </div>
+                                ))
                               ) : (
-                                <div className="text-editor-icon text-sm">
-                                  No dependencies found
-                                </div>
+                                <div className="text-editor-icon text-sm">No dependencies found</div>
                               )}
                             </div>
                           </div>
 
                           <div>
                             <h4 className="text-sm font-medium text-editor-text mb-2">
-                              Dependents
+                              <ArrowLeft className="w-4 h-4 inline" /> Dependents
                             </h4>
                             <div className="space-y-1">
                               {dependencyAnalysis.dependents.length > 0 ? (
-                                dependencyAnalysis.dependents.map(
-                                  (dep, i) => (
-                                    <div
-                                      key={i}
-                                      className="flex items-center text-editor-text bg-editor-sidebar rounded p-2"
-                                    >
-                                      <FileCode className="w-4 h-4 mr-2 text-editor-icon" />
-                                      {dep}
-                                    </div>
-                                  )
-                                )
+                                dependencyAnalysis.dependents.map((dep, i) => (
+                                  <div
+                                    key={i}
+                                    className="flex items-center text-editor-text bg-editor-sidebar rounded p-2"
+                                  >
+                                    <FileCode className="w-4 h-4 mr-2 text-editor-icon" />
+                                    {dep}
+                                  </div>
+                                ))
                               ) : (
-                                <div className="text-editor-icon text-sm">
-                                  No dependents found
-                                </div>
+                                <div className="text-editor-icon text-sm">No dependents found</div>
                               )}
                             </div>
                           </div>
@@ -464,9 +423,7 @@ export default function CodeContextModal({
             {view === 'paste' && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-editor-text font-medium">
-                    Paste Analysis
-                  </h3>
+                  <h3 className="text-editor-text font-medium">Paste Analysis</h3>
                   <div className="flex gap-2">
                     <button
                       onClick={handleAnalyzePastedText}
@@ -478,16 +435,12 @@ export default function CodeContextModal({
                     {extractedFilesCode && (
                       <button
                         onClick={() =>
-                          handleExportAggregatedCode(
-                            extractedFilesCode,
-                            'extracted-files.txt'
-                          )
+                          handleExportAggregatedCode(extractedFilesCode, 'extracted-files.txt')
                         }
                         className="px-3 py-1.5 text-sm bg-editor-active text-editor-text rounded hover:bg-opacity-80"
                         title="Export Extracted Files"
                       >
-                        <Download className="w-4 h-4 mr-1 inline" />
-                        Export
+                        <Download className="w-4 h-4" />
                       </button>
                     )}
                   </div>
@@ -495,9 +448,7 @@ export default function CodeContextModal({
 
                 <div className="space-y-4">
                   <div>
-                    <h4 className="text-sm font-medium text-editor-text mb-2">
-                      Paste Text
-                    </h4>
+                    <h4 className="text-sm font-medium text-editor-text mb-2">Paste Text</h4>
                     <textarea
                       value={pastedText}
                       onChange={(e) => setPastedText(e.target.value)}
@@ -523,9 +474,7 @@ export default function CodeContextModal({
             {view === 'settings' && (
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-editor-text font-medium mb-3">
-                    Exclusion Patterns
-                  </h3>
+                  <h3 className="text-editor-text font-medium mb-3">Exclusion Patterns</h3>
                   <div className="space-y-2">
                     {config.excludePatterns.map((pattern, index) => (
                       <div key={index} className="flex items-center gap-2">
@@ -551,10 +500,7 @@ export default function CodeContextModal({
                         if (pattern) {
                           setConfig({
                             ...config,
-                            excludePatterns: [
-                              ...config.excludePatterns,
-                              pattern,
-                            ],
+                            excludePatterns: [...config.excludePatterns, pattern],
                           });
                         }
                       }}
@@ -566,9 +512,7 @@ export default function CodeContextModal({
                 </div>
 
                 <div>
-                  <h3 className="text-editor-text font-medium mb-3">
-                    Code File Extensions
-                  </h3>
+                  <h3 className="text-editor-text font-medium mb-3">Code File Extensions</h3>
                   <div className="space-y-2">
                     {config.codeExtensions.map((ext, index) => (
                       <div key={index} className="flex items-center gap-2">
@@ -606,7 +550,6 @@ export default function CodeContextModal({
                 </div>
               </div>
             )}
-            {/* End of views */}
           </div>
         </div>
       </div>

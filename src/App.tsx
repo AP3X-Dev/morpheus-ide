@@ -1,26 +1,23 @@
-// File: src/App.tsx
-
 import { useState } from 'react';
-import {
-  Code2,
-  Terminal as TerminalIcon,
-  Upload,
-  Download,
-  FileCode,
-  Save,
-  Eye,
-  Plus, // Import the Plus icon for New Project
-} from 'lucide-react';
+import { Code2, Terminal as TerminalIcon, Download, X, Plus, FileSearch } from 'lucide-react';
 import Editor from './components/Editor';
 import Sidebar from './components/Sidebar';
 import Tabs from './components/Tabs';
-import FileUpload from './components/FileUpload';
 import Terminal from './components/Terminal';
-import { exportProjectAsZip, initializeBoilerplate } from './utils/fileUtils';
+import ProjectModal from './components/ProjectModal';
 import CodeContextModal from './components/CodeContextModal';
-import NewProjectModal from './components/NewProjectModal'; // Import the NewProjectModal
-import { FileType, FolderType, Framework } from './types';
-import Preview from './components/Preview';
+import { exportProjectAsZip } from './utils/fileUtils';
+import { openFile, openDirectory, saveFile } from './utils/fileSystem';
+import {
+  createNextJsProject,
+  createFlaskProject,
+  createLangChainProject,
+  createReactProject,
+  createExpressProject,
+  createDjangoProject,
+  createReactNativeProject
+} from './utils/projectTemplates';
+import { FileType, FolderType } from './types';
 
 const initialFiles: (FileType | FolderType)[] = [];
 
@@ -28,26 +25,20 @@ function App() {
   const [files, setFiles] = useState<(FileType | FolderType)[]>(initialFiles);
   const [openFiles, setOpenFiles] = useState<FileType[]>([]);
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
-  const [isContextModalOpen, setIsContextModalOpen] = useState(false);
   const [isTerminalVisible, setIsTerminalVisible] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
-  const [htmlContent, setHtmlContent] = useState('');
-  const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false); // State for NewProjectModal
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [isCodeContextModalOpen, setIsCodeContextModalOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleFileSelect = (file: FileType) => {
-    if (!openFiles.find((f) => f.id === file.id)) {
+    if (!openFiles.find(f => f.id === file.id)) {
       setOpenFiles([...openFiles, file]);
     }
     setActiveFileId(file.id);
-
-    // If the selected file is an HTML file, set the preview content
-    if (file.name.endsWith('.html')) {
-      setHtmlContent(file.content);
-    }
   };
 
   const handleTabClose = (fileId: string) => {
-    setOpenFiles(openFiles.filter((f) => f.id !== fileId));
+    setOpenFiles(openFiles.filter(f => f.id !== fileId));
     if (activeFileId === fileId) {
       setActiveFileId(openFiles[openFiles.length - 2]?.id || null);
     }
@@ -55,7 +46,7 @@ function App() {
 
   const handleToggleFolder = (folderId: string) => {
     const toggleFolder = (items: (FileType | FolderType)[]): (FileType | FolderType)[] => {
-      return items.map((item) => {
+      return items.map(item => {
         if ('items' in item && item.id === folderId) {
           return { ...item, isOpen: !item.isOpen };
         }
@@ -69,9 +60,9 @@ function App() {
     setFiles(toggleFolder(files));
   };
 
-  const handleContentChange = async (fileId: string, content: string) => {
+  const handleContentChange = (fileId: string, content: string) => {
     const updateFileContent = (items: (FileType | FolderType)[]): (FileType | FolderType)[] => {
-      return items.map((item) => {
+      return items.map(item => {
         if ('items' in item) {
           return { ...item, items: updateFileContent(item.items) };
         }
@@ -83,87 +74,127 @@ function App() {
     };
 
     setFiles(updateFileContent(files));
-    setOpenFiles(
-      openFiles.map((file) => (file.id === fileId ? { ...file, content } : file))
-    );
-
-    // Update the preview if the active file is an HTML file
-    const activeFile = openFiles.find((f) => f.id === fileId);
-    if (activeFile && activeFile.name.endsWith('.html')) {
-      setHtmlContent(content);
-    }
-
-    const fileHandle = findFileHandle(files, fileId);
-    if (fileHandle) {
-      try {
-        const writable = await fileHandle.createWritable();
-        await writable.write(content);
-        await writable.close();
-      } catch (error) {
-        console.error('Error saving file:', error);
-        alert('Error saving file. Please try again.');
-      }
-    }
+    setOpenFiles(openFiles.map(file => 
+      file.id === fileId ? { ...file, content } : file
+    ));
   };
-
-  function findFileHandle(items: (FileType | FolderType)[], fileId: string): any | null {
-    for (const item of items) {
-      if ('items' in item) {
-        const handle = findFileHandle(item.items, fileId);
-        if (handle) return handle;
-      } else if (item.id === fileId) {
-        return item.handle;
-      }
-    }
-    return null;
-  }
 
   const handleFileUpload = (newFiles: (FileType | FolderType)[]) => {
     setFiles(newFiles);
     setOpenFiles([]);
     setActiveFileId(null);
-    setHtmlContent('');
-    setShowPreview(false);
   };
 
   const handleExport = async () => {
-    await exportProjectAsZip(files);
+    try {
+      await exportProjectAsZip(files);
+    } catch (error) {
+      setError('Failed to export project. Please try again.');
+      console.error('Export error:', error);
+    }
+  };
+
+  const handleCreateProject = async (frameworkId: string) => {
+    let newFiles: (FileType | FolderType)[] = [];
+    
+    try {
+      switch (frameworkId) {
+        case 'next':
+          newFiles = await createNextJsProject();
+          break;
+        case 'flask':
+          newFiles = await createFlaskProject();
+          break;
+        case 'langchain':
+          newFiles = await createLangChainProject();
+          break;
+        case 'react':
+          newFiles = await createReactProject();
+          break;
+        case 'express':
+          newFiles = await createExpressProject();
+          break;
+        case 'django':
+          newFiles = await createDjangoProject();
+          break;
+        case 'react-native':
+          newFiles = await createReactNativeProject();
+          break;
+        default:
+          throw new Error(`Unknown framework: ${frameworkId}`);
+      }
+
+      setFiles(newFiles);
+      setOpenFiles([]);
+      setActiveFileId(null);
+      setIsProjectModalOpen(false);
+    } catch (error) {
+      setError(`Failed to create ${frameworkId} project. Please try again.`);
+      console.error('Project creation error:', error);
+    }
+  };
+
+  const handleOpenFile = async () => {
+    try {
+      const file = await openFile();
+      setFiles([...files, file]);
+      handleFileSelect(file);
+    } catch (error) {
+      setError('Failed to open file. Please try again.');
+      console.error('File open error:', error);
+    }
+  };
+
+  const handleOpenDirectory = async () => {
+    try {
+      const newFiles = await openDirectory();
+      setFiles(newFiles);
+      setOpenFiles([]);
+      setActiveFileId(null);
+    } catch (error) {
+      setError('Failed to open directory. Please try uploading a ZIP file instead.');
+      console.error('Directory open error:', error);
+    }
   };
 
   const handleSaveFile = async () => {
+    const activeFile = openFiles.find(f => f.id === activeFileId);
     if (activeFile) {
-      const fileHandle = activeFile.handle;
-      if (fileHandle) {
-        try {
-          const writable = await fileHandle.createWritable();
-          await writable.write(activeFile.content);
-          await writable.close();
-          alert('File saved successfully!');
-        } catch (error) {
-          console.error('Error saving file:', error);
-          alert('Error saving file. Please try again.');
-        }
-      } else {
-        alert('No file handle available for this file.');
+      try {
+        await saveFile(activeFile);
+      } catch (error) {
+        setError('Failed to save file. Please try again.');
+        console.error('File save error:', error);
       }
     }
   };
 
-  const handleCreateNewProject = async (framework: Framework) => {
-    const boilerplateFiles = initializeBoilerplate(framework);
-    setFiles(boilerplateFiles);
-    setOpenFiles([]);
-    setActiveFileId(null);
-    setHtmlContent('');
-    setShowPreview(false);
-    setIsNewProjectModalOpen(false);
-    alert(`New ${framework} project created successfully!`);
+  const handleFileSourceSelect = (source: 'zip' | 'local') => {
+    if (source === 'local') {
+      handleOpenDirectory();
+    }
   };
 
-  const activeFile = openFiles.find((f) => f.id === activeFileId) || null;
+  const handleError = (message: string) => {
+    setError(message);
+  };
+
+  const activeFile = openFiles.find(f => f.id === activeFileId) || null;
 
   return (
     <div className="h-screen flex flex-col bg-editor-bg">
+      {error && (
+        <div className="fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded shadow-lg z-50 flex items-center">
+          <span>{error}</span>
+          <button
+            onClick={() => setError(null)}
+            className="ml-2 hover:text-red-100"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       <nav className="bg-editor-sidebar border-b border-editor-border">
         <div className="px-4">
           <div className="flex items-center justify-between h-12">
@@ -172,14 +203,13 @@ function App() {
               <span className="ml-2 text-lg font-bold text-editor-text">Morpheus IDE</span>
             </div>
             <div className="flex items-center space-x-2">
-              <FileUpload onFileUpload={handleFileUpload}>
-                <button
-                  className="p-2 text-editor-icon hover:text-editor-text hover:bg-editor-active rounded-lg transition-colors"
-                  title="Open Folder"
-                >
-                  <Upload className="w-5 h-5" />
-                </button>
-              </FileUpload>
+              <button
+                onClick={() => setIsProjectModalOpen(true)}
+                className="p-2 text-editor-icon hover:text-editor-text hover:bg-editor-active rounded-lg transition-colors"
+                title="New Project"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
               <button
                 onClick={handleExport}
                 className="p-2 text-editor-icon hover:text-editor-text hover:bg-editor-active rounded-lg transition-colors"
@@ -188,32 +218,11 @@ function App() {
                 <Download className="w-5 h-5" />
               </button>
               <button
-                onClick={() => setIsContextModalOpen(true)}
+                onClick={() => setIsCodeContextModalOpen(true)}
                 className="p-2 text-editor-icon hover:text-editor-text hover:bg-editor-active rounded-lg transition-colors"
-                title="Code Context Manager"
+                title="Code Analysis"
               >
-                <FileCode className="w-5 h-5" />
-              </button>
-              <button
-                onClick={handleSaveFile}
-                className="p-2 text-editor-icon hover:text-editor-text hover:bg-editor-active rounded-lg transition-colors"
-                title="Save File"
-              >
-                <Save className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => setShowPreview(!showPreview)}
-                className="p-2 text-editor-icon hover:text-editor-text hover:bg-editor-active rounded-lg transition-colors"
-                title={showPreview ? 'Hide Preview' : 'Show Preview'}
-              >
-                <Eye className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => setIsNewProjectModalOpen(true)} // Open the New Project modal
-                className="p-2 text-editor-icon hover:text-editor-text hover:bg-editor-active rounded-lg transition-colors"
-                title="New Project"
-              >
-                <Plus className="w-5 h-5" /> {/* New Project Icon */}
+                <FileSearch className="w-5 h-5" />
               </button>
               <button
                 onClick={() => setIsTerminalVisible(!isTerminalVisible)}
@@ -227,19 +236,14 @@ function App() {
         </div>
       </nav>
 
-      {/* New Project Modal */}
-      {isNewProjectModalOpen && (
-        <NewProjectModal
-          onClose={() => setIsNewProjectModalOpen(false)}
-          onCreate={handleCreateNewProject}
-        />
-      )}
-
       <div className="flex-1 flex overflow-hidden">
         <Sidebar
           files={files}
           onFileSelect={handleFileSelect}
           onToggleFolder={handleToggleFolder}
+          onOpenFile={handleOpenFile}
+          onOpenDirectory={handleOpenDirectory}
+          onSaveFile={handleSaveFile}
         />
         <div className="flex-1 flex flex-col">
           <Tabs
@@ -248,15 +252,11 @@ function App() {
             onTabSelect={setActiveFileId}
             onTabClose={handleTabClose}
           />
-          <div className="flex-1 flex overflow-hidden">
-            <div className={showPreview ? 'w-1/2' : 'w-full'}>
-              <Editor file={activeFile} onContentChange={handleContentChange} />
-            </div>
-            {showPreview && (
-              <div className="w-1/2">
-                <Preview htmlContent={htmlContent} />
-              </div>
-            )}
+          <div className="flex-1 overflow-hidden">
+            <Editor
+              file={activeFile}
+              onContentChange={handleContentChange}
+            />
           </div>
           {isTerminalVisible && (
             <Terminal
@@ -267,9 +267,18 @@ function App() {
         </div>
       </div>
 
+      <ProjectModal
+        isOpen={isProjectModalOpen}
+        onClose={() => setIsProjectModalOpen(false)}
+        onCreateProject={handleCreateProject}
+        onFileUpload={handleFileUpload}
+        onSelectSource={handleFileSourceSelect}
+        onError={handleError}
+      />
+
       <CodeContextModal
-        isOpen={isContextModalOpen}
-        onClose={() => setIsContextModalOpen(false)}
+        isOpen={isCodeContextModalOpen}
+        onClose={() => setIsCodeContextModalOpen(false)}
         files={files}
       />
     </div>
