@@ -6,6 +6,8 @@ import { createReactProject } from './templates/react';
 import { createExpressProject } from './templates/express';
 import { createDjangoProject } from './templates/django';
 import { createReactNativeProject } from './templates/react-native';
+import { createEthereumProject } from './templates/ethereum';
+import { createSolanaProject } from './templates/solana';
 
 export {
   createNextJsProject,
@@ -14,5 +16,7 @@ export {
   createReactProject,
   createExpressProject,
   createDjangoProject,
-  createReactNativeProject
+  createReactNativeProject,
+  createEthereumProject,
+  createSolanaProject
 };

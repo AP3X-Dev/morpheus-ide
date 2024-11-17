@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, FileCode, Binary, Globe, Server, Database, Smartphone, Brain, Upload, Folder } from 'lucide-react';
+import { X, FileCode, Binary, Globe, Server, Database, Smartphone, Brain, Blocks, Coins, Upload, Folder } from 'lucide-react';
 import { Framework, FileType, FolderType } from '../types';
 import FileUpload from './FileUpload';
 
@@ -61,11 +61,24 @@ const frameworks: Framework[] = [
     description: 'Build AI applications with LangChain and FastAPI',
     icon: <Brain className="w-8 h-8 text-pink-400" />,
     category: 'ai'
+  },
+  {
+    id: 'ethereum',
+    name: 'Ethereum',
+    description: 'Smart contracts with Solidity and Hardhat',
+    icon: <Blocks className="w-8 h-8 text-blue-500" />,
+    category: 'blockchain'
+  },
+  {
+    id: 'solana',
+    name: 'Solana',
+    description: 'High-performance smart contracts with Rust',
+    icon: <Coins className="w-8 h-8 text-purple-500" />,
+    category: 'blockchain'
   }
 ];
 
-type ProjectView = 'templates' | 'open';
-type Category = 'all' | 'frontend' | 'backend' | 'fullstack' | 'mobile' | 'ai';
+type Category = 'all' | 'frontend' | 'backend' | 'fullstack' | 'mobile' | 'ai' | 'blockchain';
 
 export default function ProjectModal({
   isOpen,
@@ -75,7 +88,7 @@ export default function ProjectModal({
   onSelectSource,
   onError
 }: ProjectModalProps) {
-  const [view, setView] = useState<ProjectView>('templates');
+  const [view, setView] = useState<'templates' | 'open'>('templates');
   const [selectedCategory, setSelectedCategory] = useState<Category>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreating, setIsCreating] = useState(false);
@@ -88,7 +101,8 @@ export default function ProjectModal({
     { id: 'backend', name: 'Backend' },
     { id: 'fullstack', name: 'Full Stack' },
     { id: 'mobile', name: 'Mobile' },
-    { id: 'ai', name: 'AI' }
+    { id: 'ai', name: 'AI' },
+    { id: 'blockchain', name: 'Blockchain' }
   ];
 
   const filteredFrameworks = frameworks.filter(framework => {
@@ -104,7 +118,7 @@ export default function ProjectModal({
       await onCreateProject(frameworkId);
       onClose();
     } catch (error) {
-      onError('Failed to create project. Please try again.');
+      onError(`Failed to create ${frameworkId} project. Please try again.`);
       console.error('Project creation error:', error);
     } finally {
       setIsCreating(false);
@@ -125,8 +139,7 @@ export default function ProjectModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-editor-bg border border-editor-border rounded-lg w-[800px] h-[600px] flex flex-col">
-        {/* Header */}
+      <div className="bg-editor-bg border border-editor-border rounded-lg w-[800px] max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-editor-border">
           <div className="flex items-center gap-4">
             <h2 className="text-lg font-semibold text-editor-text">Project Manager</h2>
@@ -163,8 +176,7 @@ export default function ProjectModal({
         </div>
 
         {view === 'templates' ? (
-          <>
-            {/* Search */}
+          <div className="flex-1 flex flex-col min-h-0">
             <div className="p-4 border-b border-editor-border">
               <input
                 type="text"
@@ -175,7 +187,6 @@ export default function ProjectModal({
               />
             </div>
 
-            {/* Categories */}
             <div className="flex flex-wrap gap-2 p-4 border-b border-editor-border">
               {categories.map(category => (
                 <button
@@ -192,8 +203,7 @@ export default function ProjectModal({
               ))}
             </div>
 
-            {/* Framework Grid */}
-            <div className="flex-1 p-4 overflow-y-auto min-h-0">
+            <div className="flex-1 p-4 overflow-y-auto">
               <div className="grid grid-cols-2 gap-4 auto-rows-max">
                 {filteredFrameworks.map(framework => (
                   <button
@@ -217,7 +227,7 @@ export default function ProjectModal({
                 ))}
               </div>
             </div>
-          </>
+          </div>
         ) : (
           <div className="flex-1 p-4 space-y-4">
             <FileUpload
@@ -254,10 +264,6 @@ export default function ProjectModal({
                 </p>
               </div>
             </button>
-
-            <div className="mt-4 pt-4 border-t border-editor-border text-sm text-editor-icon">
-              Note: Local folder access may be restricted in some browsers
-            </div>
           </div>
         )}
       </div>

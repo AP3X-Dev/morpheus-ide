@@ -17,5 +17,5 @@ export interface Framework {
   name: string;
   description: string;
   icon: JSX.Element;
-  category: 'frontend' | 'backend' | 'fullstack' | 'mobile' | 'ai';
+  category: 'frontend' | 'backend' | 'fullstack' | 'mobile' | 'ai' | 'blockchain';
 }

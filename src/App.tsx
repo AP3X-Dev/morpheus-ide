@@ -15,7 +15,9 @@ import {
   createReactProject,
   createExpressProject,
   createDjangoProject,
-  createReactNativeProject
+  createReactNativeProject,
+  createEthereumProject,
+  createSolanaProject
 } from './utils/projectTemplates';
 import { FileType, FolderType } from './types';
 
@@ -95,9 +97,9 @@ function App() {
   };
 
   const handleCreateProject = async (frameworkId: string) => {
-    let newFiles: (FileType | FolderType)[] = [];
-    
     try {
+      let newFiles: (FileType | FolderType)[] = [];
+      
       switch (frameworkId) {
         case 'next':
           newFiles = await createNextJsProject();
@@ -119,6 +121,12 @@ function App() {
           break;
         case 'react-native':
           newFiles = await createReactNativeProject();
+          break;
+        case 'ethereum':
+          newFiles = await createEthereumProject();
+          break;
+        case 'solana':
+          newFiles = await createSolanaProject();
           break;
         default:
           throw new Error(`Unknown framework: ${frameworkId}`);
