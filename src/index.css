@@ -38,43 +38,32 @@ body {
   background-color: #1e1e1e !important;
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
+/* XTerm Customizations */
+.xterm {
+  padding: 8px;
+  height: 100%;
+}
+
+.xterm-viewport {
+  overflow-y: auto !important;
+}
+
+.xterm-viewport::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 
-::-webkit-scrollbar-track {
-  background: #1e1e1e;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #3e3e3e;
-  border: 2px solid #1e1e1e;
-  border-radius: 5px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #4e4e4e;
-}
-
-/* Terminal Customizations */
-.terminal-content::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-.terminal-content::-webkit-scrollbar-track {
+.xterm-viewport::-webkit-scrollbar-track {
   background: #000000;
 }
 
-.terminal-content::-webkit-scrollbar-thumb {
+.xterm-viewport::-webkit-scrollbar-thumb {
   background: #2d2d2d;
   border: 2px solid #000000;
   border-radius: 5px;
 }
 
-.terminal-content::-webkit-scrollbar-thumb:hover {
+.xterm-viewport::-webkit-scrollbar-thumb:hover {
   background: #3d3d3d;
 }
 
