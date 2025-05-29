@@ -1,6 +1,8 @@
-import { useState } from 'react';
-import { Code2, Terminal as TerminalIcon, Download, X, Plus, FileSearch } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Code2, Terminal as TerminalIcon, Download, X, Plus, FileSearch, Zap } from 'lucide-react';
 import Editor from './components/Editor';
+import EnhancedEditor from './components/ContextEngine/EnhancedEditor';
+import ContextPanel from './components/ContextEngine/ContextPanel';
 import Sidebar from './components/Sidebar';
 import Tabs from './components/Tabs';
 import Terminal from './components/Terminal';
@@ -8,6 +10,12 @@ import ProjectModal from './components/ProjectModal';
 import CodeContextModal from './components/CodeContextModal';
 import { exportProjectAsZip } from './utils/fileUtils';
 import { openFile, openDirectory, saveFile } from './utils/fileSystem';
+import { useContextEngineStore } from './stores/contextEngineStore';
+import { contextEngineService } from './services/contextEngine';
+import { embeddingService } from './services/embeddingService';
+import { vectorStoreService } from './services/vectorStore';
+import { aiService } from './services/aiService';
+import { ContextEngineConfig } from './types/contextEngine';
 import {
   createNextJsProject,
   createFlaskProject,
@@ -31,6 +39,88 @@ function App() {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isCodeContextModalOpen, setIsCodeContextModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [useEnhancedEditor, setUseEnhancedEditor] = useState(true);
+
+  // Context Engine Store
+  const {
+    isInitialized,
+    contextPanel,
+    toggleContextPanel,
+    initializeEngine,
+    indexProject
+  } = useContextEngineStore();
+
+  // Initialize Context Engine on component mount
+  useEffect(() => {
+    const initializeContextEngine = async () => {
+      try {
+        const config: ContextEngineConfig = {
+          vectorStore: {
+            url: 'http://localhost:6333', // Default Qdrant URL
+            collectionName: 'morpheus-code',
+            vectorSize: 1536,
+            distance: 'cosine'
+          },
+          aiProvider: {
+            name: 'OpenAI',
+            type: 'openai',
+            apiKey: process.env.REACT_APP_OPENAI_API_KEY || 'demo-key',
+            models: ['gpt-4', 'gpt-3.5-turbo'],
+            maxTokens: 4000,
+            supportsStreaming: true
+          },
+          fileWatcher: {
+            ignored: ['**/node_modules/**', '**/.git/**'],
+            persistent: true,
+            ignoreInitial: true,
+            followSymlinks: false,
+            depth: 10,
+            awaitWriteFinish: {
+              stabilityThreshold: 100,
+              pollInterval: 50
+            }
+          },
+          project: {
+            excludePatterns: ['node_modules/**', '.git/**', 'dist/**', 'build/**'],
+            includePatterns: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx', '**/*.py', '**/*.java'],
+            maxFileSize: 1024 * 1024, // 1MB
+            chunkSize: 1000,
+            chunkOverlap: 200,
+            embeddingModel: 'text-embedding-ada-002',
+            llmProvider: 'openai',
+            llmModel: 'gpt-4',
+            enableRealTimeIndexing: true,
+            enableAICompletion: true,
+            enableContextualChat: true
+          },
+          ui: {
+            enableHoverTooltips: true,
+            enableInlineSuggestions: true,
+            enableContextPanel: true,
+            suggestionDelay: 1000,
+            maxSuggestions: 5
+          }
+        };
+
+        await initializeEngine(config);
+      } catch (error) {
+        console.error('Failed to initialize context engine:', error);
+        setError('Failed to initialize AI features. Some functionality may be limited.');
+      }
+    };
+
+    initializeContextEngine();
+  }, [initializeEngine]);
+
+  // Index project when files change
+  useEffect(() => {
+    if (isInitialized && files.length > 0) {
+      indexProject(files).catch(error => {
+        console.error('Failed to index project:', error);
+        setError('Failed to index project for AI features.');
+      });
+    }
+  }, [isInitialized, files, indexProject]);
 
   const handleFileSelect = (file: FileType) => {
     if (!openFiles.find(f => f.id === file.id)) {
@@ -76,7 +166,7 @@ function App() {
     };
 
     setFiles(updateFileContent(files));
-    setOpenFiles(openFiles.map(file => 
+    setOpenFiles(openFiles.map(file =>
       file.id === fileId ? { ...file, content } : file
     ));
   };
@@ -99,7 +189,7 @@ function App() {
   const handleCreateProject = async (frameworkId: string) => {
     try {
       let newFiles: (FileType | FolderType)[] = [];
-      
+
       switch (frameworkId) {
         case 'next':
           newFiles = await createNextJsProject();
@@ -190,61 +280,133 @@ function App() {
   const activeFile = openFiles.find(f => f.id === activeFileId) || null;
 
   return (
-    <div className="h-screen flex flex-col bg-editor-bg">
+    <div className="h-screen flex flex-col bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white overflow-hidden">
       {error && (
-        <div className="fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded shadow-lg z-50 flex items-center">
-          <span>{error}</span>
+        <div className="fixed top-4 right-4 glass border border-red-500/30 bg-red-500/20 text-red-300 px-4 py-3 rounded-xl shadow-xl z-50 flex items-center animate-fadeIn">
+          <span className="text-sm font-medium">{error}</span>
           <button
             onClick={() => setError(null)}
-            className="ml-2 hover:text-red-100"
+            className="ml-3 text-red-400 hover:text-red-300 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
-      <nav className="bg-editor-sidebar border-b border-editor-border">
-        <div className="px-4">
-          <div className="flex items-center justify-between h-12">
-            <div className="flex items-center">
-              <Code2 className="w-6 h-6 text-editor-icon" />
-              <span className="ml-2 text-lg font-bold text-editor-text">Morpheus IDE</span>
+      {/* Modern Header with Glass Effect */}
+      <header className="h-16 glass border-b border-white/10 flex items-center justify-between px-6 relative z-50">
+        <div className="flex items-center space-x-6">
+          <div className="flex items-center space-x-3">
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg blur opacity-75"></div>
+              <div className="relative bg-gradient-to-r from-blue-500 to-purple-600 p-2 rounded-lg">
+                <Code2 className="w-6 h-6 text-white" />
+              </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setIsProjectModalOpen(true)}
-                className="p-2 text-editor-icon hover:text-editor-text hover:bg-editor-active rounded-lg transition-colors"
-                title="New Project"
-              >
-                <Plus className="w-5 h-5" />
-              </button>
-              <button
-                onClick={handleExport}
-                className="p-2 text-editor-icon hover:text-editor-text hover:bg-editor-active rounded-lg transition-colors"
-                title="Export Project"
-              >
-                <Download className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => setIsCodeContextModalOpen(true)}
-                className="p-2 text-editor-icon hover:text-editor-text hover:bg-editor-active rounded-lg transition-colors"
-                title="Code Analysis"
-              >
-                <FileSearch className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => setIsTerminalVisible(!isTerminalVisible)}
-                className="p-2 text-editor-icon hover:text-editor-text hover:bg-editor-active rounded-lg transition-colors"
-                title={isTerminalVisible ? 'Hide Terminal' : 'Show Terminal'}
-              >
-                <TerminalIcon className="w-5 h-5" />
-              </button>
+            <div>
+              <h1 className="text-xl font-bold gradient-text">Morpheus IDE</h1>
+              <p className="text-xs text-gray-400">AI-Powered Development Environment</p>
             </div>
           </div>
-        </div>
-      </nav>
 
-      <div className="flex-1 flex overflow-hidden">
+          {/* AI Status Indicator */}
+          {isInitialized && (
+            <div className="flex items-center space-x-2 bg-green-500/20 border border-green-500/30 rounded-full px-3 py-1">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              <span className="text-xs text-green-300 font-medium">AI Ready</span>
+            </div>
+          )}
+        </div>
+        {/* Enhanced Action Buttons */}
+        <div className="flex items-center space-x-1">
+          <div className="flex items-center space-x-1 bg-white/5 rounded-xl p-1">
+            <button
+              onClick={() => setIsProjectModalOpen(true)}
+              className="group relative p-3 rounded-lg transition-all duration-200 hover:bg-white/10 hover:scale-105"
+              title="New Project"
+            >
+              <Plus className="w-5 h-5 text-gray-300 group-hover:text-white transition-colors" />
+              <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                New Project
+              </div>
+            </button>
+
+            <button
+              onClick={handleExport}
+              className="group relative p-3 rounded-lg transition-all duration-200 hover:bg-white/10 hover:scale-105"
+              title="Export Project"
+            >
+              <Download className="w-5 h-5 text-gray-300 group-hover:text-white transition-colors" />
+              <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                Export
+              </div>
+            </button>
+
+            <button
+              onClick={() => setIsCodeContextModalOpen(true)}
+              className="group relative p-3 rounded-lg transition-all duration-200 hover:bg-white/10 hover:scale-105"
+              title="Code Analysis"
+            >
+              <FileSearch className="w-5 h-5 text-gray-300 group-hover:text-white transition-colors" />
+              <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                Analysis
+              </div>
+            </button>
+          </div>
+
+          <div className="w-px h-8 bg-white/20 mx-2"></div>
+
+          <div className="flex items-center space-x-1 bg-white/5 rounded-xl p-1">
+            <button
+              onClick={toggleContextPanel}
+              className={`group relative p-3 rounded-lg transition-all duration-200 hover:scale-105 ${
+                contextPanel.isOpen
+                  ? 'bg-blue-500/30 text-blue-300 glow'
+                  : 'hover:bg-white/10 text-gray-300 hover:text-white'
+              }`}
+              title="AI Context Panel"
+            >
+              <Zap className="w-5 h-5 transition-colors" />
+              <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                AI Context
+              </div>
+            </button>
+
+            <button
+              onClick={() => setUseEnhancedEditor(!useEnhancedEditor)}
+              className={`group relative p-3 rounded-lg transition-all duration-200 hover:scale-105 ${
+                useEnhancedEditor
+                  ? 'bg-green-500/30 text-green-300 glow'
+                  : 'hover:bg-white/10 text-gray-300 hover:text-white'
+              }`}
+              title={`${useEnhancedEditor ? 'Disable' : 'Enable'} AI Editor`}
+            >
+              <Code2 className="w-5 h-5 transition-colors" />
+              <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                AI Editor
+              </div>
+            </button>
+
+            <button
+              onClick={() => setIsTerminalVisible(!isTerminalVisible)}
+              className={`group relative p-3 rounded-lg transition-all duration-200 hover:scale-105 ${
+                isTerminalVisible
+                  ? 'bg-purple-500/30 text-purple-300'
+                  : 'hover:bg-white/10 text-gray-300 hover:text-white'
+              }`}
+              title={isTerminalVisible ? 'Hide Terminal' : 'Show Terminal'}
+            >
+              <TerminalIcon className="w-5 h-5 transition-colors" />
+              <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                Terminal
+              </div>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content Area with Modern Layout */}
+      <div className="flex-1 flex overflow-hidden bg-gradient-to-br from-slate-900/50 to-slate-800/30">
         <Sidebar
           files={files}
           onFileSelect={handleFileSelect}
@@ -253,24 +415,42 @@ function App() {
           onOpenDirectory={handleOpenDirectory}
           onSaveFile={handleSaveFile}
         />
-        <div className="flex-1 flex flex-col">
+
+        <div className="flex-1 flex flex-col relative">
+          {/* Enhanced Tabs */}
           <Tabs
             openFiles={openFiles}
             activeFileId={activeFileId}
             onTabSelect={setActiveFileId}
             onTabClose={handleTabClose}
           />
-          <div className="flex-1 overflow-hidden">
-            <Editor
-              file={activeFile}
-              onContentChange={handleContentChange}
-            />
+
+          {/* Editor Area with Glass Effect */}
+          <div className="flex-1 overflow-hidden relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-slate-900/20 to-slate-800/40 backdrop-blur-sm"></div>
+            <div className="relative h-full">
+              {useEnhancedEditor ? (
+                <EnhancedEditor
+                  file={activeFile}
+                  onContentChange={handleContentChange}
+                />
+              ) : (
+                <Editor
+                  file={activeFile}
+                  onContentChange={handleContentChange}
+                />
+              )}
+            </div>
           </div>
+
+          {/* Enhanced Terminal */}
           {isTerminalVisible && (
-            <Terminal
-              isVisible={isTerminalVisible}
-              onClose={() => setIsTerminalVisible(false)}
-            />
+            <div className="border-t border-white/10 bg-gradient-to-r from-slate-900/80 to-slate-800/60 backdrop-blur-sm">
+              <Terminal
+                isVisible={isTerminalVisible}
+                onClose={() => setIsTerminalVisible(false)}
+              />
+            </div>
           )}
         </div>
       </div>
@@ -288,6 +468,11 @@ function App() {
         isOpen={isCodeContextModalOpen}
         onClose={() => setIsCodeContextModalOpen(false)}
         files={files}
+      />
+
+      <ContextPanel
+        isOpen={contextPanel.isOpen}
+        onClose={() => toggleContextPanel()}
       />
     </div>
   );

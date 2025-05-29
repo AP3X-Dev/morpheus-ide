@@ -1,10 +1,10 @@
 import React, { useEffect, useRef } from 'react';
 import { Terminal as TerminalIcon, X } from 'lucide-react';
-import { Terminal as XTerm } from 'xterm';
-import { FitAddon } from 'xterm-addon-fit';
-import { WebLinksAddon } from 'xterm-addon-web-links';
-import { WebglAddon } from 'xterm-addon-webgl';
-import 'xterm/css/xterm.css';
+import { Terminal as XTerm } from '@xterm/xterm';
+import { FitAddon } from '@xterm/addon-fit';
+import { WebLinksAddon } from '@xterm/addon-web-links';
+import { WebglAddon } from '@xterm/addon-webgl';
+import '@xterm/xterm/css/xterm.css';
 
 interface TerminalProps {
   isVisible: boolean;
@@ -101,11 +101,11 @@ export default function Terminal({ isVisible, onClose }: TerminalProps) {
       if (ev.keyCode === 13) { // Enter
         const currentLine = term.buffer.active.getLine(term.buffer.active.cursorY)?.translateToString();
         const command = currentLine?.substring(2).trim();
-        
+
         if (command) {
           handleCommand(command, term);
         }
-        
+
         term.write('\r\n$ ');
       } else if (ev.keyCode === 8) { // Backspace
         const currentLine = term.buffer.active.getLine(term.buffer.active.cursorY)?.translateToString();
@@ -188,11 +188,11 @@ export default function Terminal({ isVisible, onClose }: TerminalProps) {
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDragging) return;
-      
+
       const deltaY = startY - e.clientY;
       const newHeight = Math.min(Math.max(startHeight + deltaY, 150), window.innerHeight - 200);
       setTerminalHeight(newHeight);
-      
+
       if (fitAddonRef.current && xtermRef.current) {
         fitAddonRef.current.fit();
       }
@@ -216,31 +216,58 @@ export default function Terminal({ isVisible, onClose }: TerminalProps) {
   if (!isVisible) return null;
 
   return (
-    <div 
-      className="bg-editor-bg border-t border-editor-border select-none"
+    <div
+      className="glass border-t border-white/20 select-none backdrop-blur-sm"
       style={{ height: terminalHeight }}
     >
-      <div 
-        className="h-1 cursor-row-resize bg-editor-border hover:bg-editor-active transition-colors"
+      {/* Modern Resize Handle */}
+      <div
+        className="h-1 cursor-row-resize bg-gradient-to-r from-blue-500/50 to-purple-500/50 hover:from-blue-500 hover:to-purple-500 transition-all duration-200"
         onMouseDown={handleResizeStart}
       />
-      <div className="flex items-center justify-between px-4 py-2 bg-editor-sidebar border-b border-editor-border">
-        <div className="flex items-center">
-          <TerminalIcon className="w-4 h-4 mr-2 text-editor-icon" />
-          <span className="text-sm text-editor-text">Terminal</span>
+
+      {/* Enhanced Terminal Header */}
+      <div className="flex items-center justify-between px-6 py-3 bg-gradient-to-r from-slate-900/80 to-slate-800/60 border-b border-white/10">
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-lg flex items-center justify-center">
+            <TerminalIcon className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <span className="text-sm font-semibold text-white">Terminal</span>
+            <div className="text-xs text-gray-400">Interactive Shell</div>
+          </div>
         </div>
-        <button
-          onClick={onClose}
-          className="p-1 text-editor-icon hover:text-editor-text hover:bg-editor-active rounded"
-        >
-          <X className="w-4 h-4" />
-        </button>
+
+        {/* Terminal Controls */}
+        <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1">
+            <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+            <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+          </div>
+          <div className="w-px h-4 bg-white/20 mx-2"></div>
+          <button
+            onClick={onClose}
+            className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200 hover:scale-105"
+            title="Close Terminal"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       </div>
-      <div
-        ref={terminalRef}
-        className="h-[calc(100%-41px)] w-full"
-        style={{ backgroundColor: '#000000' }}
-      />
+
+      {/* Terminal Content with Enhanced Styling */}
+      <div className="relative h-[calc(100%-57px)] bg-gradient-to-br from-black/90 to-slate-900/80">
+        <div
+          ref={terminalRef}
+          className="absolute inset-0 p-2"
+          style={{ backgroundColor: 'transparent' }}
+        />
+
+        {/* Terminal Overlay Effects */}
+        <div className="absolute inset-0 bg-gradient-to-t from-transparent via-transparent to-white/5 pointer-events-none"></div>
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+      </div>
     </div>
   );
 }

@@ -20,25 +20,43 @@ A modern, feature-rich code editor built with React and TypeScript, designed to 
   - React, Next.js, Flask, Django, Express
   - AI development with LangChain
   - Mobile development with React Native
-  
+
 - **Flexible Project Import/Export**
   - Upload projects via ZIP
   - Import from local filesystem
   - Export entire projects with dependencies
   - Preserve project structure and settings
 
-### 🧠 Code Analysis Tools
+### 🧠 AI-Powered Context Engine
+- **Semantic Code Search**
+  - Natural language queries ("authentication functions", "error handling patterns")
+  - Vector similarity search with relevance ranking
+  - Advanced filtering by language, type, and file path
+  - Real-time search with instant results
+
+- **AI-Powered Chat Assistant**
+  - Context-aware conversations about your codebase
+  - Code explanation and documentation generation
+  - Debugging assistance and optimization suggestions
+  - Integration with relevant code snippets
+
+- **Intelligent Code Completion**
+  - AI-generated code suggestions based on context
+  - Multi-language support with language-specific patterns
+  - Confidence scoring and ranking
+  - Real-time suggestions as you type
+
+- **Code Relationships & Insights**
+  - Dependency analysis and visualization
+  - AI-powered code quality analysis
+  - Security vulnerability detection
+  - Performance optimization suggestions
+
 - **Advanced Code Context**
   - Generate visual file trees
   - Track file dependencies
   - Analyze code relationships
   - Export documentation
-
-- **Smart Code Search**
-  - Full-text search across files
-  - Regular expression support
-  - File type filtering
-  - Quick jump to definition
 
 ### 💻 Development Environment
 - **Integrated Terminal**
@@ -58,6 +76,10 @@ A modern, feature-rich code editor built with React and TypeScript, designed to 
 ### Prerequisites
 - Node.js 18.x or higher
 - npm 9.x or higher
+- **For AI Features (Optional)**:
+  - OpenAI API key for AI completions and chat
+  - Qdrant vector database for semantic search
+  - 8GB+ RAM recommended for optimal AI performance
 
 ### Quick Start
 1. Clone the repository:
@@ -71,12 +93,37 @@ A modern, feature-rich code editor built with React and TypeScript, designed to 
    npm install
    ```
 
-3. Start the development server:
+3. Set up environment variables (optional, for AI features):
+   ```bash
+   # Create .env file
+   REACT_APP_OPENAI_API_KEY=your_openai_api_key
+   REACT_APP_QDRANT_URL=http://localhost:6333
+   ```
+
+4. Start Qdrant vector database (optional, for AI features):
+   ```bash
+   docker run -p 6333:6333 qdrant/qdrant
+   ```
+
+5. Start the development server:
    ```bash
    npm run dev
    ```
 
 The IDE will be available at `http://localhost:5173`
+
+### AI Features Setup
+
+#### Full AI Setup (Recommended)
+For the complete AI experience with semantic search and intelligent completions:
+
+1. **Get OpenAI API Key**: Sign up at [OpenAI](https://platform.openai.com/) and create an API key
+2. **Start Qdrant**: Run the vector database using Docker (see step 4 above)
+3. **Configure Environment**: Set your API keys in the `.env` file
+4. **Load Project**: Import or create a project to enable AI indexing
+
+#### Demo Mode
+The IDE works without API keys using mock AI services. You can explore the interface and basic functionality, though AI features will be simulated.
 
 ## 💡 Usage Tips
 
@@ -114,6 +161,35 @@ The IDE will be available at `http://localhost:5173`
    - Click "+" for new terminal
    - Switch between sessions
    - Different shells per terminal
+
+### AI Features Usage
+
+1. **Enable AI Context Panel**:
+   - Click the ⚡ button in the toolbar
+   - Wait for project indexing to complete
+   - Explore the four main tabs: Search, Chat, Relationships, Insights
+
+2. **Semantic Code Search**:
+   - Type natural language queries like "authentication functions"
+   - Use filters to narrow results by language or file type
+   - Click results to view code with context
+
+3. **AI Chat Assistant**:
+   - Ask questions about your codebase
+   - Get explanations of complex code patterns
+   - Request optimization suggestions and best practices
+
+4. **Enhanced Code Editor**:
+   - Toggle AI editor with the 🔧 button
+   - Get real-time AI suggestions as you type
+   - Use Ctrl+K (Cmd+K) for manual AI completions
+   - Hover over code for contextual information
+
+5. **Code Insights**:
+   - View AI-generated code quality analysis
+   - Get security vulnerability warnings
+   - See performance optimization suggestions
+   - Explore code relationship visualizations
 
 ## 🛠️ Configuration
 

@@ -1,47 +1,285 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
+  /* Modern Dark Theme - Enhanced Color Palette */
+  --editor-bg: #0a0a0f;
+  --editor-sidebar: #111118;
+  --editor-background: #1a1a24;
+  --editor-surface: #242438;
+  --editor-border: #2a2a3e;
+  --editor-text: #e4e4e7;
+  --editor-text-secondary: #a1a1aa;
+  --editor-icon: #71717a;
+  --editor-active: #3b82f620;
+  --editor-hover: #27272a;
+
+  /* Accent Colors */
+  --primary: #3b82f6;
+  --primary-dark: #2563eb;
+  --primary-light: #60a5fa;
+  --secondary: #8b5cf6;
+  --accent: #06b6d4;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  --gradient-secondary: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+  --gradient-accent: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-glow: 0 0 20px rgb(59 130 246 / 0.3);
+
+  /* Animations */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
+
   color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  background-color: #1e1e1e;
-  color: #d4d4d4;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--editor-bg);
+  color: var(--editor-text);
+  font-weight: 400;
+  line-height: 1.5;
 }
 
-/* Monaco Editor Customizations */
+code, pre {
+  font-family: 'JetBrains Mono', 'Fira Code', source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+  font-feature-settings: 'liga' 1, 'calt' 1;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--editor-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--editor-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--editor-icon);
+}
+
+/* Selection Styling */
+::selection {
+  background: var(--primary);
+  color: white;
+}
+
+/* Focus Styling */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900;
+}
+
+/* Glass Effect */
+.glass {
+  backdrop-filter: blur(12px);
+  background: rgba(26, 26, 36, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Gradient Text */
+.gradient-text {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glow Effect */
+.glow {
+  box-shadow: var(--shadow-glow);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-25%); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slideIn {
+  animation: slideIn 0.3s ease-out;
+}
+
+.animate-pulse {
+  animation: pulse 2s infinite;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.animate-bounce {
+  animation: bounce 1s infinite;
+}
+
+/* Button Variants */
+.btn-primary {
+  @apply bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg transition-all duration-200 focus-ring;
+}
+
+.btn-secondary {
+  @apply bg-gray-700 hover:bg-gray-600 text-white font-medium px-4 py-2 rounded-lg transition-all duration-200 focus-ring;
+}
+
+.btn-ghost {
+  @apply bg-transparent hover:bg-gray-800 text-gray-300 hover:text-white font-medium px-4 py-2 rounded-lg transition-all duration-200 focus-ring;
+}
+
+.btn-icon {
+  @apply p-2 rounded-lg transition-all duration-200 hover:bg-gray-800 text-gray-400 hover:text-white focus-ring;
+}
+
+/* Input Styling */
+.input-primary {
+  @apply bg-gray-800 border border-gray-700 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200;
+}
+
+/* Card Styling */
+.card {
+  @apply bg-gray-800 border border-gray-700 rounded-xl p-6 shadow-lg;
+}
+
+.card-hover {
+  @apply card hover:bg-gray-700 hover:border-gray-600 transition-all duration-200 cursor-pointer;
+}
+
+/* Status Indicators */
+.status-online {
+  @apply w-2 h-2 bg-green-400 rounded-full animate-pulse;
+}
+
+.status-offline {
+  @apply w-2 h-2 bg-gray-500 rounded-full;
+}
+
+.status-loading {
+  @apply w-2 h-2 bg-yellow-400 rounded-full animate-bounce;
+}
+
+/* Monaco Editor Overrides */
 .monaco-editor {
-  background-color: #1e1e1e !important;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
+  background-color: var(--editor-background) !important;
 }
 
 .monaco-editor .margin {
-  background-color: #1e1e1e !important;
+  background-color: var(--editor-background) !important;
 }
 
 .monaco-editor .line-numbers {
-  color: #6b7280 !important;
+  color: var(--editor-icon) !important;
 }
 
 .monaco-editor .monaco-editor-background {
-  background-color: #1e1e1e !important;
+  background-color: var(--editor-background) !important;
 }
 
 .monaco-editor .editor-widget {
-  background-color: #1e1e1e !important;
+  background-color: var(--editor-surface) !important;
 }
 
 .monaco-editor .suggest-widget {
-  background-color: #1e1e1e !important;
+  background: var(--editor-surface) !important;
+  border: 1px solid var(--editor-border) !important;
+  border-radius: 8px !important;
+  box-shadow: var(--shadow-xl) !important;
+}
+
+.monaco-editor .monaco-hover {
+  background: var(--editor-surface) !important;
+  border: 1px solid var(--editor-border) !important;
+  border-radius: 8px !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+.monaco-editor .minimap {
+  background-color: var(--editor-background) !important;
+}
+
+.monaco-editor .suggest-widget .monaco-list,
+.monaco-editor .suggest-widget .monaco-list .monaco-list-row,
+.monaco-editor .suggest-widget .monaco-list .monaco-list-row.focused {
+  background-color: var(--editor-surface) !important;
+  color: var(--editor-text) !important;
+}
+
+.monaco-editor .parameter-hints-widget {
+  background-color: var(--editor-surface) !important;
+  border: 1px solid var(--editor-border) !important;
+  border-radius: 8px !important;
+}
+
+.monaco-editor .find-widget {
+  background-color: var(--editor-surface) !important;
+  border: 1px solid var(--editor-border) !important;
+  border-radius: 8px !important;
+}
+
+.monaco-editor .current-line {
+  background-color: var(--editor-hover) !important;
+}
+
+.monaco-editor .selected-text {
+  background-color: var(--editor-active) !important;
 }
 
 /* XTerm Customizations */
 .xterm {
-  padding: 8px;
+  padding: 12px;
   height: 100%;
+  background: var(--editor-background);
+  border-radius: 8px;
 }
 
 .xterm-viewport {
@@ -49,60 +287,19 @@ body {
 }
 
 .xterm-viewport::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 
 .xterm-viewport::-webkit-scrollbar-track {
-  background: #000000;
+  background: var(--editor-background);
 }
 
 .xterm-viewport::-webkit-scrollbar-thumb {
-  background: #2d2d2d;
-  border: 2px solid #000000;
-  border-radius: 5px;
+  background: var(--editor-border);
+  border-radius: 4px;
 }
 
 .xterm-viewport::-webkit-scrollbar-thumb:hover {
-  background: #3d3d3d;
-}
-
-/* Editor Font */
-@font-face {
-  font-family: 'JetBrains Mono';
-  src: url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
-  font-display: swap;
-}
-
-/* Force dark theme on Monaco editor components */
-.monaco-editor .minimap {
-  background-color: #1e1e1e !important;
-}
-
-.monaco-editor .suggest-widget,
-.monaco-editor .suggest-widget .monaco-list,
-.monaco-editor .suggest-widget .monaco-list .monaco-list-row,
-.monaco-editor .suggest-widget .monaco-list .monaco-list-row.focused {
-  background-color: #1e1e1e !important;
-  color: #d4d4d4 !important;
-}
-
-.monaco-editor .parameter-hints-widget {
-  background-color: #1e1e1e !important;
-  border: 1px solid #3e3e3e !important;
-}
-
-.monaco-editor .monaco-hover {
-  background-color: #1e1e1e !important;
-  border: 1px solid #3e3e3e !important;
-}
-
-/* Force dark theme on editor overlays */
-.monaco-editor .overlayWidgets {
-  background-color: #1e1e1e !important;
-}
-
-.monaco-editor .find-widget {
-  background-color: #1e1e1e !important;
-  border: 1px solid #3e3e3e !important;
+  background: var(--editor-icon);
 }
